@@ -304,8 +304,8 @@ function renderTrack(f){
     idx++;
   });});
   const recs=(f.records||[]);
-  const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td>${thaiDate(r.docDate)}</td></tr>`).join('')
-    : '<tr><td colspan="4" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
+  const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td>${esc(r.docType)||'—'}</td><td>${thaiDate(r.docDate)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
   const tl=(f.timeline||'').split(',').map(s=>s.trim()).filter(Boolean);
   const tlBadges = tl.length ? tl.map(t=>`<span class="badge bg-secondary me-1 mb-1">${esc(t)}</span>`).join('') : '<span class="text-muted">— ยังไม่ระบุ —</span>';
   const logRows=(f.logs||[]).length ? (f.logs||[]).map(l=>{
@@ -372,7 +372,7 @@ function renderTrack(f){
       <div class="col-lg-6"><div class="card h-100">
         <div class="card-header"><i class="bi bi-list-ol me-1"></i>รายการเอกสารในแฟ้ม</div>
         <div class="card-body p-0"><div class="table-responsive">
-          <table class="table table-sm mb-0"><thead class="table-light"><tr><th>#</th><th>เลขที่หนังสือ</th><th>ชื่อเรื่อง</th><th>วันที่</th></tr></thead>
+          <table class="table table-sm mb-0"><thead class="table-light"><tr><th>#</th><th>เลขที่หนังสือ</th><th>ชื่อเรื่อง</th><th>ประเภท</th><th>วันที่</th></tr></thead>
           <tbody>${recRows}</tbody></table></div></div></div></div>
       <div class="col-lg-6"><div class="card h-100">
         <div class="card-header"><i class="bi bi-clock-history me-1"></i>ประวัติการสแกน</div>
