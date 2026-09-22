@@ -69,6 +69,42 @@
   .dwell-box.dwell-now .fw-bold{ color:#8a5a00; }
 
   .conn-badge{ font-weight:600; }
+  .hist-tl{ display:flex; align-items:flex-start; flex-wrap:wrap; }
+  .hist-tl-node{ text-align:center; min-width:88px; flex:0 0 auto; }
+  .hist-tl-dot{ width:16px;height:16px;border-radius:50%;background:#cbd5dc;margin:4px auto 4px;border:3px solid #eef2f4; }
+  .hist-tl-node.active .hist-tl-dot{ background:#f5b301; }
+  .hist-tl-node.done .hist-tl-dot{ background:var(--brand); }
+  .hist-tl-name{ font-weight:600; font-size:.8rem; }
+  .hist-tl-times{ color:var(--muted); line-height:1.25; font-size:.72rem; }
+  .hist-tl-line{ flex:1 1 18px; height:3px; background:#e2e8ec; margin-top:11px; min-width:12px; }
+  .hist-tl-line.done{ background:var(--brand); }
+  .hist-tl-node.label .hist-tl-dot{ background:#fff; border:3px solid #cbd5dc; }
+  .hist-tl-node.label.active .hist-tl-dot{ background:#fff7e6; border-color:#f5b301; }
+  .hist-tl-node.label.done .hist-tl-dot{ background:#e7f8f4; border-color:var(--brand); }
+  .hist-tl-node.label .hist-tl-name{ font-weight:500; color:#475569; }
+  .hist-caret{ transition:transform .18s; color:var(--muted); }
+  .hist-item.open .hist-caret{ transform:rotate(90deg); }
+  .hist-head:hover{ background:#f6fbfa; }
+  .hist-row{ display:grid; align-items:center; gap:10px; padding:9px 14px;
+    grid-template-columns:20px 148px 104px minmax(180px,2fr) minmax(120px,1.15fr) minmax(95px,.85fr) 132px 86px 104px 142px 44px; }
+  .hist-colhead{ font-size:.76rem; font-weight:600; color:var(--muted); background:#f7f9fa;
+    border-bottom:1px solid var(--line); padding-top:8px; padding-bottom:8px; }
+  .hist-cell{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hist-cell.num{ font-weight:700; }
+  .hist-cell.time{ text-align:right; font-size:.78rem; color:var(--muted); }
+  .hist-item:last-child .hist-row{ border-bottom:0; }
+  @media (max-width: 1500px){
+    .hist-row{ grid-template-columns:20px 140px 100px minmax(160px,2fr) minmax(110px,1.1fr) 124px 84px 100px 138px 44px; }
+    .hist-row .col-dept{ display:none; }
+  }
+  @media (max-width: 1250px){
+    .hist-row{ grid-template-columns:20px 134px 96px minmax(150px,2fr) minmax(105px,1fr) 82px 98px 132px 44px; }
+    .hist-row .col-type{ display:none; }
+  }
+  @media (max-width: 1000px){
+    .hist-row{ grid-template-columns:20px 128px minmax(140px,2fr) minmax(100px,1fr) 96px 44px; }
+    .hist-row .col-docdate, .hist-row .col-urg, .hist-row .col-time{ display:none; }
+  }
 </style>
 </head>
 <body>
@@ -139,19 +175,54 @@ let CONFIG = Object.assign({}, DEFAULTS);
 const TOTAL_FOLDERS = 200;
 
 /* ---------- ตัวเรียก API แบบ JSONP ---------- */
+const TOKEN_KEY='uph_token';
+let AUTH_TOKEN = localStorage.getItem(TOKEN_KEY) || '';
 function api(action, params){
+  params = Object.assign({}, params||{});
+  if(AUTH_TOKEN && !params.token) params.token = AUTH_TOKEN;
   return new Promise((resolve, reject)=>{
     if(!WEBAPP_URL || WEBAPP_URL.indexOf("PASTE_YOUR")===0){ reject(new Error("ยังไม่ได้ตั้งค่า WEBAPP_URL")); return; }
     const cb = 'jsonp_' + Math.random().toString(36).slice(2);
     const s = document.createElement('script');
     const t = setTimeout(()=>{ cleanup(); reject(new Error("หมดเวลาเชื่อมต่อ")); }, 30000);
     function cleanup(){ try{delete window[cb];}catch(e){} s.remove(); clearTimeout(t); }
-    window[cb] = (data)=>{ cleanup(); resolve(data); };
+    window[cb] = (data)=>{ cleanup();
+      if(data && data.code==='NO_AUTH'){ localStorage.removeItem(TOKEN_KEY); showLoginNotice(); }
+      resolve(data); };
     const q = new URLSearchParams(Object.assign({action, callback:cb}, params||{}));
     s.src = WEBAPP_URL + '?' + q.toString();
     s.onerror = ()=>{ cleanup(); reject(new Error("เชื่อมต่อไม่สำเร็จ")); };
     document.body.appendChild(s);
   });
+}
+
+/* ---------- ป้องกันการเปิดเครื่องมือนักพัฒนา (ตัวกันเบื้องต้น) ---------- */
+(function(){
+  const block=(e)=>{ e.preventDefault(); e.stopPropagation(); return false; };
+  document.addEventListener('contextmenu', block);                       // คลิกขวา
+  document.addEventListener('keydown', function(e){
+    const k=(e.key||'').toUpperCase();
+    if(k==='F12') return block(e);                                        // F12
+    if(e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(k)) return block(e);  // Ctrl+Shift+I/J/C/K
+    if(e.ctrlKey && k==='U') return block(e);                             // Ctrl+U (ดูซอร์ส)
+    if(e.ctrlKey && k==='S') return block(e);                             // Ctrl+S (บันทึกหน้า)
+    if(e.metaKey && e.altKey && ['I','J','C'].includes(k)) return block(e);        // macOS
+  }, true);
+  // ปิดการลากข้อความ/รูปออกไป
+  document.addEventListener('dragstart', block);
+})();
+
+/* ---------- แคชข้อมูล (ให้ค้นหาซ้ำแสดงทันที) ---------- */
+const API_CACHE=new Map(), API_INFLIGHT=new Map();
+const CACHE_TTL=60000;
+function apiCached(action, params, ttl){
+  const key=action+'|'+JSON.stringify(params||{}), now=Date.now(), life=(ttl===undefined?CACHE_TTL:ttl);
+  const hit=API_CACHE.get(key);
+  if(hit && (now-hit.t)<life) return Promise.resolve(hit.v);
+  if(API_INFLIGHT.has(key)) return API_INFLIGHT.get(key);
+  const pr=api(action,params).then(d=>{ if(d&&d.ok) API_CACHE.set(key,{t:Date.now(),v:d}); API_INFLIGHT.delete(key); return d; })
+                             .catch(e=>{ API_INFLIGHT.delete(key); throw e; });
+  API_INFLIGHT.set(key,pr); return pr;
 }
 
 /* ---------- helper ---------- */
@@ -234,6 +305,101 @@ async function openFolder(code){
     el.scrollIntoView({behavior:'smooth', block:'start'});
   }catch(err){ el.innerHTML=`<div class="alert alert-danger">${esc(err.message)}</div>`; }
 }
+/* ---------- ป้าย/ไทม์ไลน์ประวัติ ---------- */
+function safeType(v){ const t=(v==null)?'':String(v); return t.indexOf('หนังสือ')===0 ? t : ''; }
+function urgencyBadge(u){
+  if(!u || u==='ปกติ') return '';
+  const c = u==='ด่วนที่สุด' ? 'bg-danger' : (u==='ด่วนมาก' ? 'bg-warning text-dark' : 'bg-info text-dark');
+  return `<span class="badge ${c} ms-1">${esc(u)}</span>`;
+}
+function classifyExec(name){
+  const n=(name||'').trim();
+  for(let i=1;i<=5;i++){ if(n===cfg('rong'+i)) return 'rong'; }
+  if(n===cfg('dean')) return 'dean';
+  if(n===cfg('dir')) return 'dir';
+  if(/คณบดี/.test(n)) return 'dean';
+  if(/ผู้อำนวยการ|ผอ/.test(n)) return 'dir';
+  return 'rong';
+}
+function histTimeline(logs, timeline){
+  const done={}; (logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=l.timestamp; });
+  const p=n=>String(n).padStart(2,'0');
+  const tfmt=iso=>{ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return ''; return thaiDate(iso)+' '+p(d.getHours())+':'+p(d.getMinutes()); };
+  const has=k=>!!done[k];
+  const s1out=has('S1|ออก'), s2in=has('S2|เข้า'), s2out=has('S2|ออก'), s3in=has('S3|เข้า'), s3out=has('S3|ออก'), s4in=has('S4|เข้า');
+  const execs=(timeline||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const rongNames=[], dirNames=[], deanNames=[];
+  execs.forEach(nm=>{ const g=classifyExec(nm); if(g==='dean') deanNames.push(nm); else if(g==='dir') dirNames.push(nm); else rongNames.push(nm); });
+  const midHigh=deanNames.concat(dirNames);
+  const stNode=(k)=>{ const inT=done[k+'|เข้า'], outT=done[k+'|ออก'];
+    const times = inT ? ('เข้า '+tfmt(inT)+(outT?('<br>ออก '+tfmt(outT)):'')) : '<span class="text-muted">ยังไม่ถึง</span>';
+    return { reached:!!inT, cls:outT?'done':(inT?'active':''),
+      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${esc(stationName(k))}</div><div class="hist-tl-times">${times}</div>` }; };
+  const lbNode=(names, reached, doneFlag, activeFlag)=>{
+    const txt=doneFlag?'ผ่านแล้ว':(activeFlag?'อยู่ช่วงนี้':'<span class="text-muted">ยังไม่ถึง</span>');
+    return { reached, cls:'label '+(doneFlag?'done':(activeFlag?'active':'')),
+      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${names.map(n=>esc(n)).join('<br>')}</div><div class="hist-tl-times">${txt}</div>` }; };
+  const nodes=[];
+  nodes.push(stNode('S1'));
+  nodes.push(lbNode(['หัวหน้าสำนักงาน'], s1out, s2in, s1out&&!s2in));
+  nodes.push(stNode('S2'));
+  if(rongNames.length) nodes.push(lbNode(rongNames, s2out, s3in, s2out&&!s3in));
+  nodes.push(stNode('S3'));
+  if(midHigh.length) nodes.push(lbNode(midHigh, s3out, s4in, s3out&&!s4in));
+  nodes.push(stNode('S4'));
+  let html='<div class="hist-tl">';
+  nodes.forEach((nd,i)=>{ if(i>0) html+=`<div class="hist-tl-line ${nd.reached?'done':''}"></div>`;
+    html+=`<div class="hist-tl-node ${nd.cls}">${nd.inner}</div>`; });
+  return html+'</div>';
+}
+function toggleHist(head){
+  const item=head.closest('.hist-item');
+  const det=item.querySelector('.hist-detail');
+  const open=det.style.display==='none';
+  det.style.display=open?'block':'none';
+  item.classList.toggle('open', open);
+}
+function histHeaderHTML(){
+  return `<div class="hist-row hist-colhead">
+    <div></div><div>เลขที่ อว</div><div class="col-docdate">วันที่เสนอแฟ้ม</div><div>ชื่อเรื่อง</div>
+    <div>ผู้เสนอ</div><div class="col-dept">ฝ่ายงาน</div><div class="col-type">ประเภทหนังสือ</div>
+    <div class="col-urg">ชั้นความเร็ว</div><div>สถานะ</div>
+    <div class="col-time text-end">วันที่/เวลาแฟ้มออก</div><div></div></div>`;
+}
+function histEntryHTML(x){
+  const when = thaiDateTime(x.live ? x.archivedAt : x.completedAt);
+  const recs=x.records||[];
+  const first=recs[0]||{};
+  const shortDoc = recs.length ? (`${esc(first.docNumber)||''}${first.subject?(' · '+esc(first.subject)):''}`+(recs.length>1?` <span class="text-muted">(+${recs.length-1})</span>`:'')) : '<span class="text-muted">—</span>';
+  const recsHtml=recs.length ? recs.map(r=>
+    `<div>• <b>${esc(r.docNumber)||'—'}</b> ${safeType(r.docType)?('<span class="text-muted">('+esc(safeType(r.docType))+')</span>'):''} ${esc(r.subject)||''}${urgencyBadge(r.urgency)}${r.docDate?(' <span class="text-muted">· '+thaiDate(r.docDate)+'</span>'):''}</div>`
+  ).join('') : '<span class="text-muted">— ไม่มีรายการเอกสาร —</span>';
+  const viewBtn = x.live ? `<button class="btn btn-sm btn-brand py-0 px-2" onclick="event.stopPropagation();openFolder('${esc(x.folderCode)}')" title="ดูรายละเอียด"><i class="bi bi-eye"></i></button>` : '';
+  const auNo = first.docNumber || '—';
+  const moreTag = recs.length>1 ? ` <span class="text-muted fw-normal">(+${recs.length-1})</span>` : '';
+  const docDate = thaiDate(first.docDate) || '—';
+  const subject = first.subject || '';
+  const docType = safeType(first.docType);
+  return `<div class="hist-item border-bottom">
+    <div class="hist-head hist-row" style="cursor:pointer" onclick="toggleHist(this)">
+      <div><i class="bi bi-chevron-right hist-caret"></i></div>
+      <div class="hist-cell num" title="แฟ้ม ${esc(x.folderCode)}">${esc(auNo)}${moreTag}</div>
+      <div class="hist-cell col-docdate small">${esc(docDate)}</div>
+      <div class="hist-cell" title="${esc(subject)}">${esc(subject)||'<span class="text-muted">—</span>'}</div>
+      <div class="hist-cell" title="${esc(x.owner)}">${esc(x.owner)||'<span class="text-muted">—</span>'}</div>
+      <div class="hist-cell col-dept text-muted" title="${esc(x.department)}">${esc(x.department)||'—'}</div>
+      <div class="hist-cell col-type small" title="${esc(docType)}">${esc(docType)||'<span class="text-muted">—</span>'}</div>
+      <div class="hist-cell col-urg">${x.urgency&&x.urgency!=='ปกติ'?urgencyBadge(x.urgency).replace(' ms-1',''):'<span class="text-muted small">ปกติ</span>'}</div>
+      <div class="hist-cell">${statusBadge(x.status)}</div>
+      <div class="hist-cell col-time time">${when}</div>
+      <div class="text-end">${viewBtn}</div>
+    </div>
+    <div class="hist-detail px-3 pb-3" style="display:none">
+      ${histTimeline(x.logs, x.timeline)}
+      <div class="small mt-2">${recsHtml}</div>
+    </div>
+  </div>`;
+}
 async function doTrack(){
   let kw=(document.getElementById('trackInput').value||'').trim();
   { const n=normalizeScan(kw); if(n.code && /^\d{3,4}$/.test(n.code) && n.code!==kw) kw=n.code; }
@@ -245,50 +411,42 @@ async function doTrack(){
 
   if(!dept && !date && /^\d{1,4}$/.test(kw)){
     const n=parseInt(kw,10);
-    if(n>=1 && n<=TOTAL_FOLDERS){ listEl.innerHTML=''; return openFolder(pad4(kw)); }
+    if(n>=1 && n<=TOTAL_FOLDERS){
+      listEl.innerHTML='<div class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>กำลังค้นหา…</div>';
+      try{ const d=await api('getFolder',{folderCode:pad4(kw)});
+        if(d.ok && d.folder && (d.folder.status||'ว่าง')!=='ว่าง'){ listEl.innerHTML=''; return renderTrack(d.folder); }
+      }catch(e){}
+    }
   }
   if(!kw && !dept && !date){ listEl.innerHTML=''; return; }
 
   listEl.innerHTML='<div class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>กำลังค้นหา…</div>';
-  let rows;
-  try{ const d=await api('getExportData'); if(!d.ok) throw new Error(d.error||'error'); rows=d.rows||[]; }
+  let entries;
+  try{ const d=await apiCached('getHistory',{period:'all', limit:'all'}); if(!d.ok) throw new Error(d.error||'error'); entries=d.rows||[]; }
   catch(err){ listEl.innerHTML=`<div class="alert alert-danger">${esc(err.message)}</div>`; return; }
 
   const q=kw.toLowerCase();
   const qDigits=kw.replace(/[^0-9]/g,'');
-  const matched=rows.filter(r=>{
-    if(dept && (r.department||'')!==dept) return false;
-    if(date && (r.docDate||'')!==date) return false;
+  const matched=entries.filter(x=>{
+    if(dept && (x.department||'')!==dept) return false;
+    if(date && !(x.records||[]).some(r=>(r.docDate||'')===date)) return false;
     if(!q) return true;
-    const auAfter=((r.docNumber||'').split('/')[1]||'');
-    const hay=[pad4(r.folderCode), r.owner, r.department, r.docNumber, auAfter, r.subject, r.docDate, thaiDate(r.docDate)]
-      .map(x=>(x||'').toString().toLowerCase()).join(' | ');
+    const parts=[pad4(x.folderCode), x.owner, x.department, x.timeline, x.status];
+    (x.records||[]).forEach(r=>{ parts.push(r.docNumber, (r.docNumber||'').split('/')[1]||'', r.subject, r.docType, r.urgency, r.docDate, thaiDate(r.docDate)); });
+    const hay=parts.map(v=>(v||'').toString().toLowerCase()).join(' | ');
     if(hay.indexOf(q)>=0) return true;
-    if(qDigits && ((r.docNumber||'').replace(/[^0-9]/g,'').indexOf(qDigits)>=0)) return true;
+    if(qDigits && (x.records||[]).some(r=>(r.docNumber||'').replace(/[^0-9]/g,'').indexOf(qDigits)>=0)) return true;
     return false;
   });
 
-  const byFolder={};
-  matched.forEach(r=>{ const c=pad4(r.folderCode); if(!byFolder[c]) byFolder[c]={folder:r, recs:[]}; if(r.docNumber||r.subject) byFolder[c].recs.push(r); });
-  const codes=Object.keys(byFolder).sort();
+  if(!matched.length){ listEl.innerHTML='<div class="card"><div class="card-body text-center text-muted py-4"><i class="bi bi-inbox me-1"></i>ไม่พบแฟ้มที่ตรงกับเงื่อนไข</div></div>'; return; }
+  if(matched.length===1 && matched[0].live && kw && !dept && !date){ listEl.innerHTML=''; return openFolder(matched[0].folderCode); }
 
-  if(codes.length===0){ listEl.innerHTML='<div class="card"><div class="card-body text-center text-muted py-4"><i class="bi bi-inbox me-1"></i>ไม่พบแฟ้มที่ตรงกับเงื่อนไข</div></div>'; return; }
-  if(codes.length===1){ listEl.innerHTML=''; return openFolder(codes[0]); }
-
-  const rowsHtml=codes.map(c=>{
-    const g=byFolder[c]; const f=g.folder;
-    const docs=g.recs.length ? g.recs.map(r=>`${esc(r.docNumber||'')}${r.subject?(' <span class="text-muted">· '+esc(r.subject)+'</span>'):''}`).join('<br>') : '<span class="text-muted">—</span>';
-    return `<tr style="cursor:pointer" onclick="openFolder('${c}')">
-      <td><b>${c}</b></td><td>${esc(f.owner)||'—'}</td><td>${esc(f.department)||'—'}</td>
-      <td class="small">${docs}</td><td>${statusBadge(f.status)}${editBadge(f)}</td>
-      <td class="text-end"><button class="btn btn-sm btn-brand" onclick="event.stopPropagation();openFolder('${c}')"><i class="bi bi-eye me-1"></i>ดู</button></td></tr>`;
-  }).join('');
+  const liveN=matched.filter(x=>x.live).length, doneN=matched.length-liveN;
   listEl.innerHTML=`<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-list-ul me-1"></i>ผลการค้นหา — พบ ${codes.length} แฟ้ม</div>
-    <div class="card-body p-0"><div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light"><tr><th>รหัสแฟ้ม</th><th>ผู้เสนอ (เจ้าของ)</th><th>ฝ่ายงาน</th><th>เอกสารที่ตรงเงื่อนไข</th><th>สถานะ</th><th></th></tr></thead>
-        <tbody>${rowsHtml}</tbody></table></div></div></div>`;
+    <div class="card-header"><i class="bi bi-list-ul me-1"></i>ผลการค้นหา — พบ ${matched.length} รายการ
+      <span class="small text-muted ms-2">(กำลังดำเนินการ ${liveN} &middot; เสร็จแล้ว ${doneN}) — คลิกเพื่อดูไทม์ไลน์</span></div>
+    <div class="card-body p-0">${histHeaderHTML()}${matched.map(histEntryHTML).join('')}</div></div>`;
 }
 
 /* ---------- รายละเอียดแฟ้ม (อ่านอย่างเดียว) ---------- */
@@ -305,8 +463,8 @@ function renderTrack(f){
     idx++;
   });});
   const recs=(f.records||[]);
-  const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td>${esc(r.docType)||'—'}</td><td>${thaiDate(r.docDate)}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
+  const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td>${esc(safeType(r.docType))||'—'}</td><td>${esc(r.urgency)||'ปกติ'}</td><td>${thaiDate(r.docDate)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
   const tl=(f.timeline||'').split(',').map(s=>s.trim()).filter(Boolean);
   const tlBadges = tl.length ? tl.map(t=>`<span class="badge bg-secondary me-1 mb-1">${esc(t)}</span>`).join('') : '<span class="text-muted">— ยังไม่ระบุ —</span>';
   const logRows=(f.logs||[]).length ? (f.logs||[]).map(l=>{
@@ -373,7 +531,7 @@ function renderTrack(f){
       <div class="col-lg-6"><div class="card h-100">
         <div class="card-header"><i class="bi bi-list-ol me-1"></i>รายการเอกสารในแฟ้ม</div>
         <div class="card-body p-0"><div class="table-responsive">
-          <table class="table table-sm mb-0"><thead class="table-light"><tr><th>#</th><th>เลขที่หนังสือ</th><th>ชื่อเรื่อง</th><th>ประเภท</th><th>วันที่</th></tr></thead>
+          <table class="table table-sm mb-0"><thead class="table-light"><tr><th>#</th><th>เลขที่หนังสือ</th><th>ชื่อเรื่อง</th><th>ประเภท</th><th>ชั้นความเร็ว</th><th>วันที่</th></tr></thead>
           <tbody>${recRows}</tbody></table></div></div></div></div>
       <div class="col-lg-6"><div class="card h-100">
         <div class="card-header"><i class="bi bi-clock-history me-1"></i>ประวัติการสแกน</div>
@@ -381,6 +539,15 @@ function renderTrack(f){
           <table class="table table-sm mb-0"><thead class="table-light"><tr><th>เวลา</th><th>จุด</th><th>ทิศทาง</th></tr></thead>
           <tbody>${logRows}</tbody></table></div></div></div></div>
     </div>`;
+}
+
+function showLoginNotice(){
+  const el=document.getElementById('trackList');
+  if(el) el.innerHTML='<div class="card"><div class="card-body text-center py-4">'+
+    '<i class="bi bi-shield-lock fs-3 text-muted d-block mb-2"></i>'+
+    '<div class="fw-semibold mb-1">กรุณาเข้าสู่ระบบก่อนใช้งาน</div>'+
+    '<div class="small text-muted mb-3">หน้านี้ต้องใช้บัญชี @up.ac.th</div>'+
+    '<a class="btn btn-brand btn-sm" href="index.html">ไปหน้าเข้าสู่ระบบ</a></div></div>';
 }
 
 /* ---------- เริ่มต้น ---------- */
