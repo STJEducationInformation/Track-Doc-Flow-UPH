@@ -314,42 +314,58 @@ function urgencyBadge(u){
 }
 function classifyExec(name){
   const n=(name||'').trim();
+  if(!n) return '';
   for(let i=1;i<=5;i++){ if(n===cfg('rong'+i)) return 'rong'; }
   if(n===cfg('dean')) return 'dean';
   if(n===cfg('dir')) return 'dir';
+  // ชื่อไม่ตรงกับตั้งค่าปัจจุบัน -> ดูจากคำในชื่อ ("รอง" ต้องมาก่อน "ผู้อำนวยการ")
+  if(/รอง/.test(n)) return 'rong';
   if(/คณบดี/.test(n)) return 'dean';
   if(/ผู้อำนวยการ|ผอ/.test(n)) return 'dir';
   return 'rong';
+}
+/* จุดที่แฟ้มต้องผ่าน ตามผู้บริหารที่เลือก (ตรงกับกติกาฝั่ง server)
+   S1 ทุกแฟ้ม · S2 เมื่อเลือกรอง · S3 เมื่อเลือก ผอ./คณบดี · S4 ทุกแฟ้ม */
+function routeStations(timeline){
+  let rong=false, high=false;
+  String(timeline||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>{
+    const g=classifyExec(n); if(g==='rong') rong=true; else if(g==='dir'||g==='dean') high=true;
+  });
+  const st=['S1']; if(rong) st.push('S2'); if(high) st.push('S3'); st.push('S4');
+  return st;
 }
 function histTimeline(logs, timeline){
   const done={}; (logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=l.timestamp; });
   const p=n=>String(n).padStart(2,'0');
   const tfmt=iso=>{ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return ''; return thaiDate(iso)+' '+p(d.getHours())+':'+p(d.getMinutes()); };
-  const has=k=>!!done[k];
-  const s1out=has('S1|ออก'), s2in=has('S2|เข้า'), s2out=has('S2|ออก'), s3in=has('S3|เข้า'), s3out=has('S3|ออก'), s4in=has('S4|เข้า');
-  const execs=(timeline||'').split(',').map(x=>x.trim()).filter(Boolean);
-  const rongNames=[], dirNames=[], deanNames=[];
-  execs.forEach(nm=>{ const g=classifyExec(nm); if(g==='dean') deanNames.push(nm); else if(g==='dir') dirNames.push(nm); else rongNames.push(nm); });
-  const midHigh=deanNames.concat(dirNames);
-  const stNode=(k)=>{ const inT=done[k+'|เข้า'], outT=done[k+'|ออก'];
+  const route=routeStations(timeline);
+  const execs=(timeline||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const rongNames=[], highNames=[], deanNames=[];
+  execs.forEach(nm=>{ const g=classifyExec(nm); if(g==='dean') deanNames.push(nm); else if(g==='dir') highNames.push(nm); else if(g==='rong') rongNames.push(nm); });
+  const midHigh=deanNames.concat(highNames);         // คณบดี อยู่เหนือ ผอ.
+  const stNode=(k)=>{
+    const inT=done[k+'|เข้า'], outT=done[k+'|ออก'];
     const times = inT ? ('เข้า '+tfmt(inT)+(outT?('<br>ออก '+tfmt(outT)):'')) : '<span class="text-muted">ยังไม่ถึง</span>';
     return { reached:!!inT, cls:outT?'done':(inT?'active':''),
-      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${esc(stationName(k))}</div><div class="hist-tl-times">${times}</div>` }; };
-  const lbNode=(names, reached, doneFlag, activeFlag)=>{
-    const txt=doneFlag?'ผ่านแล้ว':(activeFlag?'อยู่ช่วงนี้':'<span class="text-muted">ยังไม่ถึง</span>');
-    return { reached, cls:'label '+(doneFlag?'done':(activeFlag?'active':'')),
-      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${names.map(n=>esc(n)).join('<br>')}</div><div class="hist-tl-times">${txt}</div>` }; };
-  const nodes=[];
-  nodes.push(stNode('S1'));
-  nodes.push(lbNode(['หัวหน้าสำนักงาน'], s1out, s2in, s1out&&!s2in));
-  nodes.push(stNode('S2'));
-  if(rongNames.length) nodes.push(lbNode(rongNames, s2out, s3in, s2out&&!s3in));
-  nodes.push(stNode('S3'));
-  if(midHigh.length) nodes.push(lbNode(midHigh, s3out, s4in, s3out&&!s4in));
+      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${esc(stationName(k))}</div><div class="hist-tl-times">${times}</div>` };
+  };
+  /* ป้ายผู้บริหาร: ผ่านแล้วเมื่อจุดถัดไปรับเข้า, อยู่ช่วงนี้เมื่อจุดก่อนหน้าสแกนออกแล้ว */
+  const lbNode=(names, prevSt, nextSt)=>{
+    const started=!!done[prevSt+'|ออก'], finished=!!done[nextSt+'|เข้า'];
+    const txt=finished?'ผ่านแล้ว':(started?'อยู่ช่วงนี้':'<span class="text-muted">ยังไม่ถึง</span>');
+    return { reached:started, cls:'label '+(finished?'done':(started?'active':'')),
+      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${names.map(n=>esc(n)).join('<br>')}</div><div class="hist-tl-times">${txt}</div>` };
+  };
+  const nextOf=k=>route[route.indexOf(k)+1];
+  const nodes=[stNode('S1'), lbNode(['หัวหน้าสำนักงาน'],'S1',nextOf('S1'))];
+  if(route.indexOf('S2')>=0){ nodes.push(stNode('S2')); if(rongNames.length) nodes.push(lbNode(rongNames,'S2',nextOf('S2'))); }
+  if(route.indexOf('S3')>=0){ nodes.push(stNode('S3')); if(midHigh.length) nodes.push(lbNode(midHigh,'S3',nextOf('S3'))); }
   nodes.push(stNode('S4'));
   let html='<div class="hist-tl">';
-  nodes.forEach((nd,i)=>{ if(i>0) html+=`<div class="hist-tl-line ${nd.reached?'done':''}"></div>`;
-    html+=`<div class="hist-tl-node ${nd.cls}">${nd.inner}</div>`; });
+  nodes.forEach((nd,i)=>{
+    if(i>0) html+=`<div class="hist-tl-line ${nd.reached?'done':''}"></div>`;
+    html+=`<div class="hist-tl-node ${nd.cls}">${nd.inner}</div>`;
+  });
   return html+'</div>';
 }
 function toggleHist(head){
@@ -451,7 +467,7 @@ async function doTrack(){
 
 /* ---------- รายละเอียดแฟ้ม (อ่านอย่างเดียว) ---------- */
 function renderTrack(f){
-  const keys=['S1','S2','S3','S4']; const dirs=['เข้า','ออก'];
+  const keys=f.route||routeStations(f.timeline); const dirs=['เข้า','ออก'];   // เฉพาะจุดที่อยู่ในเส้นทางของแฟ้มนี้
   const done={}; (f.logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=l.timestamp; });
   const seqKeys=[]; keys.forEach(k=>{ seqKeys.push(k+'|เข้า'); seqKeys.push(k+'|ออก'); });
   let nextIdx=0; while(nextIdx<seqKeys.length && done[seqKeys[nextIdx]]) nextIdx++;
@@ -513,7 +529,7 @@ function renderTrack(f){
           <div class="col-md-4"><span class="text-muted small">ตำแหน่งปัจจุบัน</span><div class="fw-semibold">${esc(stationName(f.currentStation))||'—'} ${f.lastDirection?('('+esc(f.lastDirection)+')'):''}</div></div>
         </div>
         <div class="mb-2"><span class="text-muted small">ผู้ที่ต้องเสนอ (ไทม์ไลน์):</span><div class="mt-1">${tlBadges}</div></div>
-        <div class="mb-1 text-muted small">ความคืบหน้า (ต้องผ่านทุกจุด ${esc(cfg('station1'))} → ${esc(cfg('station4'))})</div>
+        <div class="mb-1 text-muted small">เส้นทางของแฟ้มนี้: <b>${keys.map(k=>esc(stationName(k))).join(' → ')}</b>${keys.length<4?` <span class="badge bg-info-subtle text-info-emphasis fw-normal ms-1">ข้าม ${['S1','S2','S3','S4'].filter(k=>keys.indexOf(k)<0).map(k=>esc(stationName(k))).join(', ')} ตามผู้บริหารที่เลือก</span>`:''}</div>
         <div class="stepper mb-1">${steps}</div>
       </div>
     </div>
