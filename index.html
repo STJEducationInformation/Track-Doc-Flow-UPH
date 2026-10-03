@@ -8,7 +8,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -105,7 +105,170 @@
     .hist-row{ grid-template-columns:20px 128px minmax(140px,2fr) minmax(100px,1fr) 96px 44px; }
     .hist-row .col-docdate, .hist-row .col-urg, .hist-row .col-time{ display:none; }
   }
+  /* =====================================================================
+     ธีม: ม่วง-ทอง ตามโลโก้โรงพยาบาลมหาวิทยาลัยพะเยา (ค่าเริ่มต้น)
+     โดมสีม่วง · ริบบิ้นสีทอง · คทาแพทย์สีเขียว
+     ===================================================================== */
+  :root{
+    --bg:#F6F4F9; --surface:#FFFFFF; --ink:#231A2F; --muted:#6E6680; --line:#E6E0EE;
+    --brand:#6B3D9A; --brand-600:#5A3184; --brand-700:#46266A; --brand-soft:#EFE7F8;
+    --accent:#C8963E; --accent-ink:#86611A; --accent-soft:#FBF3E2;
+    --ok:#1F7A4C; --ok-soft:#E3F3EA; --danger:#B4373F; --danger-soft:#FBECEC;
+    --neutral-soft:#F0EDF4; --neutral-ink:#5B5469;
+    --sidebar:#2E1A47; --sidebar-2:#2E1A47; --sidebar-ink:#EDE6F7; --sidebar-muted:#A99BC0;
+    --nav-accent:#D9AE5F; --hover:#F7F2FC; --focus:rgba(107,61,154,.22); --overlay:rgba(35,26,47,.55);
+    --shadow-sm:0 1px 2px rgba(46,26,71,.06); --shadow:0 18px 40px -22px rgba(46,26,71,.45);
+    --radius:14px;
+    --font-ui:'IBM Plex Sans Thai', system-ui, sans-serif;
+    --font-display:'Noto Serif Thai', 'IBM Plex Sans Thai', serif;
+  }
+  /* ธีมเดิม: เขียวน้ำทะเล (สลับได้ที่ปุ่มจานสีมุมล่างซ้าย) */
+  html[data-theme="teal"]{
+    --bg:#eef2f4; --ink:#132a2f; --muted:#647a80; --line:#e6ecee;
+    --brand:#0d9488; --brand-600:#0f766e; --brand-700:#115e56; --brand-soft:#d8f0ec;
+    --accent:#e0a100; --accent-ink:#8a5a00; --accent-soft:#fff6e6;
+    --neutral-soft:#eef1f3; --neutral-ink:#55606b;
+    --sidebar:#0e2a30; --sidebar-2:#123a41; --sidebar-ink:#eafffb; --sidebar-muted:#8fbab5;
+    --nav-accent:#5eead4; --hover:#f3faf9; --focus:rgba(13,148,136,.18); --overlay:rgba(8,24,27,.55);
+    --shadow-sm:0 1px 2px rgba(16,36,42,.05); --shadow:0 10px 30px -14px rgba(16,36,42,.28);
+  }
+
+  /* ---------- ตัวอักษร ---------- */
+  *{ font-family:var(--font-ui); }
+  h1,h2,h3,h4,h5,h6,.font-display,.nav-link,.eyebrow,.table thead th{ font-family:var(--font-ui); }
+  .topbar .pt-title, .sidebar .brand-name, .topbar .brand-name, .stat .num, .auth-title{
+    font-family:var(--font-display); letter-spacing:0; }
+  body{ background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; }
+
+  /* ---------- แถบเมนูซ้าย: จุดเด่นของหน้าจอ ---------- */
+  .sidebar{ background:var(--sidebar); color:var(--sidebar-ink); }
+  .sidebar .brand{ padding:24px 20px 20px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .sidebar .brand-name{ font-weight:600; font-size:1.08rem; }
+  .sidebar .brand-sub{ color:var(--sidebar-muted); }
+  .sidebar nav{ padding:14px 12px; }
+  .sidebar .nav-link{ color:var(--sidebar-muted); border:0; border-radius:10px; position:relative; padding:11px 14px; }
+  .sidebar .nav-link:hover{ background:rgba(255,255,255,.05); color:var(--sidebar-ink); }
+  .sidebar .nav-link.active{ background:rgba(255,255,255,.08); color:#fff; border:0;
+    box-shadow:inset 3px 0 0 var(--nav-accent); }
+  .sidebar .nav-link.active i{ color:var(--nav-accent); }
+  .sidebar .side-foot{ border-top:1px solid rgba(255,255,255,.07); }
+  .user-chip .ava{ background:var(--nav-accent); color:var(--sidebar); }
+  .user-chip .rl{ color:var(--sidebar-muted); }
+  .sidebar .btn-outline-light{ border-color:rgba(255,255,255,.18); color:var(--sidebar-ink); }
+  .sidebar .btn-outline-light:hover{ background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.3); color:#fff; }
+
+  /* ---------- แถบหัวหน้า ---------- */
+  .topbar{ background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); }
+  .topbar .pt-title{ font-weight:600; font-size:1.3rem; color:var(--ink); }
+  .topbar .pt-sub{ color:var(--muted); }
+
+  /* ---------- การ์ด: เรียบ เงาจาง ไม่เด้ง ---------- */
+  .card{ border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+  .card-header{ font-weight:600; color:var(--ink); }
+  .card-header > span > .bi:first-child, .card-header > .bi:first-child{ color:var(--brand); }
+
+  /* ---------- ตัวเลขสรุป ---------- */
+  .stat{ box-shadow:none; padding:18px 20px 16px; }
+  .stat:hover{ transform:none; box-shadow:none; }
+  .stat .bar{ display:none; }
+  .stat .lbl{ font-size:.85rem; }
+  .stat .num{ font-size:2.35rem; font-weight:600; margin-top:8px; }
+  .stat .chip{ width:34px; height:34px; border-radius:9px; font-size:1.02rem; top:16px; right:16px; }
+  .stat.total .chip{ background:var(--accent-soft); color:var(--accent-ink); }
+  .stat.vang  .chip{ background:var(--neutral-soft); color:var(--neutral-ink); }
+  .stat.using .chip{ background:var(--brand-soft); color:var(--brand-700); }
+  .stat.done  .chip{ background:var(--ok-soft); color:var(--ok); }
+
+  /* ---------- ปุ่ม ---------- */
+  .btn{ border-radius:9px; }
+  .btn-brand{ background:var(--brand); border-color:var(--brand); color:#fff; box-shadow:none; }
+  .btn-brand:hover, .btn-brand:focus{ background:var(--brand-600); border-color:var(--brand-600); color:#fff; transform:none; }
+  .btn-outline-brand{ border-color:var(--brand); color:var(--brand); }
+  .btn-outline-brand:hover{ background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn:focus-visible, a:focus-visible, .nav-link:focus-visible{ outline:2px solid var(--brand); outline-offset:2px; box-shadow:none; }
+
+  /* ---------- ฟอร์ม ---------- */
+  .form-control, .form-select{ border-color:var(--line); }
+  .form-control:focus, .form-select:focus{ border-color:var(--brand); box-shadow:0 0 0 .2rem var(--focus); }
+  .form-check-input:checked{ background-color:var(--brand); border-color:var(--brand); }
+  .form-check-input:focus{ border-color:var(--brand); box-shadow:0 0 0 .2rem var(--focus); }
+  .fixed-prefix{ background:var(--brand-soft); color:var(--brand-700); }
+  .scan-input{ border-color:var(--brand); color:var(--ink); }
+
+  /* ---------- ป้ายสถานะ ---------- */
+  .badge-status{ border-radius:999px; padding:.4em .78em; font-weight:600; }
+  .st-ว่าง{ background:var(--neutral-soft); color:var(--neutral-ink); }
+  .st-ใช้{ background:var(--brand-soft); color:var(--brand-700); }
+  .st-เสร็จ{ background:var(--ok-soft); color:var(--ok); }
+
+  /* ---------- ตาราง ---------- */
+  .table thead th{ color:var(--muted); font-weight:600; }
+  .table-hover tbody tr:hover, .hist-head:hover, .hist-entry:hover{ background:var(--hover); }
+  .hist-colhead{ background:var(--bg); }
+
+  /* ---------- ขั้นตอน / ไทม์ไลน์ ---------- */
+  .step{ background:var(--bg); border-color:var(--line); color:var(--muted); }
+  .step.done{ background:var(--brand-soft); color:var(--brand-700); border-color:transparent; }
+  .step.next{ background:var(--accent-soft); color:var(--accent-ink); border:2px solid var(--accent); box-shadow:none; }
+  .dwell-box{ background:var(--bg); }
+  .dwell-box.dwell-now{ background:var(--accent-soft); border-color:var(--accent); box-shadow:none; }
+  .dwell-box.dwell-now .fw-bold{ color:var(--accent-ink); }
+  .hist-tl-dot{ border-color:var(--surface); background:var(--line); }
+  .hist-tl-node.active .hist-tl-dot{ background:var(--accent); }
+  .hist-tl-node.done .hist-tl-dot{ background:var(--brand); }
+  .hist-tl-line{ background:var(--line); }
+  .hist-tl-line.done{ background:var(--brand); }
+  .hist-tl-node.label .hist-tl-dot{ background:var(--surface); border-color:var(--line); }
+  .hist-tl-node.label.active .hist-tl-dot{ background:var(--accent-soft); border-color:var(--accent); }
+  .hist-tl-node.label.done .hist-tl-dot{ background:var(--brand-soft); border-color:var(--brand); }
+  .hist-tl-node.label .hist-tl-name{ color:var(--muted); }
+
+  /* ---------- กล่องข้อความในหน้า ---------- */
+  .note-route{ background:var(--brand-soft); border:1px solid transparent; color:var(--ink); }
+  .note-route .bi{ color:var(--brand); }
+  .note-edit{ background:var(--accent-soft); border:1px solid var(--accent); }
+  .bc-item.bc-printed{ border-color:var(--accent); background:var(--accent-soft); }
+  .owner-suggest .it.on, .owner-suggest .it:hover{ background:var(--hover); }
+  .owner-suggest mark{ background:var(--accent-soft); color:var(--accent-ink); }
+
+  /* ---------- หน้าเข้าสู่ระบบ ---------- */
+  .auth-wrap{ background:
+      radial-gradient(1100px 520px at 18% -10%, rgba(255,255,255,.07), transparent 60%),
+      var(--sidebar); }
+  .auth-card{ border-radius:18px; box-shadow:0 30px 70px -30px rgba(0,0,0,.55); }
+  .auth-title{ color:var(--brand-700); font-weight:600; font-size:1.3rem; }
+  .auth-sub{ padding-bottom:12px; margin:0 auto 4px; width:fit-content;
+    border-bottom:2px solid var(--accent); }
+
+  /* ---------- หน้าต่างแจ้งผลสแกน / เมนูมือถือ ---------- */
+  .scan-modal-overlay{ background:var(--overlay); }
+  .sidebar-backdrop{ background:var(--overlay); }
+
+
+  /* ---------- ป้ายชั้นความเร็ว / กำหนดเสร็จ: เข้าโทนเดียวกัน (สีทึบเฉพาะเรื่องเร่งด่วนที่สุด) ---------- */
+  .ub, .sb{ border-radius:999px; font-weight:600; padding:.38em .72em; }
+  .ub-most, .sb-over{ background:var(--danger); color:#fff; }
+  .ub-very, .sb-near, .eb-edit{ background:var(--accent-soft); color:var(--accent-ink); box-shadow:inset 0 0 0 1px var(--accent); }
+  .ub-urgent{ background:var(--brand-soft); color:var(--brand-700); }
+  .sb-ok{ background:var(--ok-soft); color:var(--ok); }
+  /* ลิงก์ใช้สีม่วงของระบบ */
+  :root{ --bs-link-color-rgb:107,61,154; --bs-link-hover-color-rgb:70,38,106; }
+  html[data-theme="teal"]{ --bs-link-color-rgb:13,148,136; --bs-link-hover-color-rgb:17,94,86; }
+  /* ---------- ลดการเคลื่อนไหวสำหรับผู้ที่ตั้งค่าไว้ ---------- */
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+
+  /* track.html: แถบหัวเป็นสีเข้มแบบแถบเมนู */
+  .topbar{ background:var(--sidebar); color:var(--sidebar-ink); border-bottom:0; backdrop-filter:none; }
+  .topbar .brand-name{ color:#fff; font-weight:600; }
+  .topbar .brand-sub{ color:var(--sidebar-muted); }
+  .topbar .btn-outline-light{ border-color:rgba(255,255,255,.22); color:var(--sidebar-ink); }
 </style>
+<script>
+  /* ใช้ธีมที่เลือกไว้ทันทีก่อนวาดหน้า (กันหน้ากระพริบเปลี่ยนสี) */
+  (function(){ try{ var t=localStorage.getItem('uph_theme'); if(t==='teal') document.documentElement.setAttribute('data-theme','teal'); }catch(e){} })();
+</script>
 </head>
 <body>
 
@@ -117,6 +280,7 @@
       <div class="brand-sub">สำหรับผู้เสนอแฟ้ม / ผู้ใช้งานทั่วไป &middot; ดูข้อมูลอย่างเดียว</div>
     </div>
     <span id="connBadge" class="conn badge bg-secondary conn-badge"><i class="bi bi-plug me-1"></i>กำลังเชื่อมต่อ…</span>
+    <button id="themeBtn" class="btn btn-sm btn-outline-light py-0 ms-2" onclick="toggleTheme()" title="สลับธีมสี"><i class="bi bi-palette"></i></button>
   </div>
 </div>
 
@@ -211,6 +375,16 @@ function api(action, params){
   // ปิดการลากข้อความ/รูปออกไป
   document.addEventListener('dragstart', block);
 })();
+
+/* สลับธีมสี (จำไว้ในเครื่อง) */
+function toggleTheme(){
+  const root=document.documentElement;
+  const next = root.getAttribute('data-theme')==='teal' ? '' : 'teal';
+  if(next) root.setAttribute('data-theme',next); else root.removeAttribute('data-theme');
+  try{ localStorage.setItem('uph_theme', next||'purple'); }catch(e){}
+  const b=document.getElementById('themeBtn');
+  if(b) b.title = next ? 'เปลี่ยนเป็นธีมม่วง-ทอง' : 'เปลี่ยนเป็นธีมเขียวน้ำทะเล';
+}
 
 /* ---------- แคชข้อมูล (ให้ค้นหาซ้ำแสดงทันที) ---------- */
 const API_CACHE=new Map(), API_INFLIGHT=new Map();
@@ -309,8 +483,8 @@ async function openFolder(code){
 function safeType(v){ const t=(v==null)?'':String(v); return t.indexOf('หนังสือ')===0 ? t : ''; }
 function urgencyBadge(u){
   if(!u || u==='ปกติ') return '';
-  const c = u==='ด่วนที่สุด' ? 'bg-danger' : (u==='ด่วนมาก' ? 'bg-warning text-dark' : 'bg-info text-dark');
-  return `<span class="badge ${c} ms-1">${esc(u)}</span>`;
+  const c = u==='ด่วนที่สุด' ? 'ub-most' : (u==='ด่วนมาก' ? 'ub-very' : 'ub-urgent');
+  return `<span class="badge ub ${c} ms-1">${esc(u)}</span>`;
 }
 function classifyExec(name){
   const n=(name||'').trim();
