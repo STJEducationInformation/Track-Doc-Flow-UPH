@@ -489,11 +489,11 @@ function urgencyBadge(u){
 function classifyExec(name){
   const n=(name||'').trim();
   if(!n) return '';
-  for(let i=1;i<=5;i++){ if(n===cfg('rong'+i)) return 'rong'; }
+  for(let i=1;i<=8;i++){ const v=cfg('rong'+i); if(v && n===v) return 'rong'; }
   if(n===cfg('dean')) return 'dean';
   if(n===cfg('dir')) return 'dir';
   // ชื่อไม่ตรงกับตั้งค่าปัจจุบัน -> ดูจากคำในชื่อ ("รอง" ต้องมาก่อน "ผู้อำนวยการ")
-  if(/รอง/.test(n)) return 'rong';
+  if(/รอง|ผู้ช่วย/.test(n)) return 'rong';          // รอง/ผู้ช่วยผู้อำนวยการ ผ่านเลขารอง
   if(/คณบดี/.test(n)) return 'dean';
   if(/ผู้อำนวยการ|ผอ/.test(n)) return 'dir';
   return 'rong';
