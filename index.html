@@ -519,13 +519,21 @@ function histTimeline(logs, timeline){
   const midHigh=deanNames.concat(highNames);         // คณบดี อยู่เหนือ ผอ.
   const stNode=(k)=>{
     const inT=done[k+'|เข้า'], outT=done[k+'|ออก'];
-    const times = inT ? ('เข้า '+tfmt(inT)+(outT?('<br>ออก '+tfmt(outT)):'')) : '<span class="text-muted">ยังไม่ถึง</span>';
-    return { reached:!!inT, cls:outT?'done':(inT?'active':''),
+    const prev=route[route.indexOf(k)-1];
+    // ธุรการ 4 สแกนครั้งเดียว: ถือว่า "มาถึง" เมื่อจุดก่อนหน้าสแกนออกแล้ว
+    const arrived=!!inT || (k==='S4' && !!prev && !!done[prev+'|ออก']);
+    const inLbl=(k==='S1')?'ลงทะเบียน ':'เข้า ';
+    let times;
+    if(inT) times=inLbl+tfmt(inT)+(outT?('<br>ออก '+tfmt(outT)):'');
+    else if(outT) times='ออก '+tfmt(outT);
+    else if(arrived) times='รอสแกนออก';
+    else times='<span class="text-muted">ยังไม่ถึง</span>';
+    return { reached:!!(inT||outT||arrived), cls:outT?'done':(arrived?'active':''),
       inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${esc(stationName(k))}</div><div class="hist-tl-times">${times}</div>` };
   };
   /* ป้ายผู้บริหาร: ผ่านแล้วเมื่อจุดถัดไปรับเข้า, อยู่ช่วงนี้เมื่อจุดก่อนหน้าสแกนออกแล้ว */
   const lbNode=(names, prevSt, nextSt)=>{
-    const started=!!done[prevSt+'|ออก'], finished=!!done[nextSt+'|เข้า'];
+    const started=!!done[prevSt+'|ออก'], finished=!!(done[nextSt+'|เข้า']||done[nextSt+'|ออก']);
     const txt=finished?'ผ่านแล้ว':(started?'อยู่ช่วงนี้':'<span class="text-muted">ยังไม่ถึง</span>');
     return { reached:started, cls:'label '+(finished?'done':(started?'active':'')),
       inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${names.map(n=>esc(n)).join('<br>')}</div><div class="hist-tl-times">${txt}</div>` };
@@ -590,68 +598,112 @@ function histEntryHTML(x){
     </div>
   </div>`;
 }
-async function doTrack(){
-  let kw=(document.getElementById('trackInput').value||'').trim();
-  { const n=normalizeScan(kw); if(n.code && /^\d{3,4}$/.test(n.code) && n.code!==kw) kw=n.code; }
-  const dept=document.getElementById('trackDept').value;
-  const date=document.getElementById('trackDate').value;
-  const listEl=document.getElementById('trackList');
-  const resEl=document.getElementById('trackResult');
-  resEl.innerHTML='';
-
-  if(!dept && !date && /^\d{1,4}$/.test(kw)){
-    const n=parseInt(kw,10);
-    if(n>=1 && n<=TOTAL_FOLDERS){
-      listEl.innerHTML='<div class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>กำลังค้นหา…</div>';
-      try{ const d=await api('getFolder',{folderCode:pad4(kw)});
-        if(d.ok && d.folder && (d.folder.status||'ว่าง')!=='ว่าง'){ listEl.innerHTML=''; return renderTrack(d.folder); }
-      }catch(e){}
-    }
-  }
-  if(!kw && !dept && !date){ listEl.innerHTML=''; return; }
-
-  listEl.innerHTML='<div class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>กำลังค้นหา…</div>';
-  let entries;
-  try{ const d=await apiCached('getHistory',{period:'all', limit:'all'}); if(!d.ok) throw new Error(d.error||'error'); entries=d.rows||[]; }
-  catch(err){ listEl.innerHTML=`<div class="alert alert-danger">${esc(err.message)}</div>`; return; }
-
-  const q=kw.toLowerCase();
-  const qDigits=kw.replace(/[^0-9]/g,'');
-  const matched=entries.filter(x=>{
-    if(dept && (x.department||'')!==dept) return false;
-    if(date && !(x.records||[]).some(r=>(r.docDate||'')===date)) return false;
-    if(!q) return true;
-    const parts=[pad4(x.folderCode), x.owner, x.department, x.timeline, x.status];
-    (x.records||[]).forEach(r=>{ parts.push(r.docNumber, (r.docNumber||'').split('/')[1]||'', r.subject, r.docType, r.urgency, r.docDate, thaiDate(r.docDate)); });
-    const hay=parts.map(v=>(v||'').toString().toLowerCase()).join(' | ');
-    if(hay.indexOf(q)>=0) return true;
-    if(qDigits && (x.records||[]).some(r=>(r.docNumber||'').replace(/[^0-9]/g,'').indexOf(qDigits)>=0)) return true;
-    return false;
+/* ===================== ค้นหาทันทีขณะพิมพ์ =====================
+   โหลดรายการแฟ้มทั้งหมดมาไว้ในเครื่องครั้งเดียว (อัปเดตเบื้องหลังเป็นระยะ)
+   แล้วกรองในเครื่องทุกครั้งที่พิมพ์ — ไม่ต้องรอ server ระหว่างพิมพ์ */
+let SEARCH_ROWS=null, SEARCH_PROMISE=null, LIVE_TIMER=null;
+const SEARCH_LIMIT=100;
+function prepSearchRow(x){
+  const parts=[pad4(x.folderCode), x.owner, x.department, x.timeline, x.status];
+  const dig=[], dates=[];
+  (x.records||[]).forEach(r=>{
+    parts.push(r.docNumber,(r.docNumber||'').split('/')[1]||'',r.subject,r.docType,r.urgency,r.docDate,thaiDate(r.docDate));
+    dig.push((r.docNumber||'').replace(/[^0-9]/g,'')); dates.push(r.docDate||'');
   });
-
+  x._hay=parts.map(v=>(v||'').toString().toLowerCase()).join(' | ');
+  x._dig=dig; x._dates=dates;
+  return x;
+}
+function loadSearchData(){
+  SEARCH_PROMISE = apiCached('getHistory',{period:'all', limit:'all'}, 60000)
+    .then(d=>{ if(d && d.ok){ SEARCH_ROWS=(d.rows||[]).map(prepSearchRow); } return SEARCH_ROWS; })
+    .catch(err=>{ SEARCH_PROMISE=null; throw err; });
+  return SEARCH_PROMISE;
+}
+function onSearchDataChanged(){ loadSearchData().then(()=>{ if(searchActive()) liveSearch(); }).catch(()=>{}); }
+function searchQuery(){
+  const raw=(document.getElementById('trackInput').value||'').trim();
+  let alt='';   // ยิงบาร์โค้ดลงช่องค้นหา -> ถอดเป็นเลขแฟ้มด้วย (ค้นทั้งคำที่พิมพ์และเลขแฟ้มที่ถอดได้)
+  if(raw){ const n=normalizeScan(raw); if(n.code && /^\d{3,4}$/.test(n.code) && n.code!==raw) alt=n.code; }
+  return { raw, alt, dept:document.getElementById('trackDept').value, date:document.getElementById('trackDate').value };
+}
+function searchActive(){ const s=searchQuery(); return !!(s.raw||s.dept||s.date); }
+function filterSearch(s){
+  const q=s.raw.toLowerCase(), qd=s.raw.replace(/[^0-9]/g,''), alt=s.alt?pad4(s.alt):'';
+  const out=[];
+  for(const x of (SEARCH_ROWS||[])){
+    if(s.dept && (x.department||'')!==s.dept) continue;
+    if(s.date && x._dates.indexOf(s.date)<0) continue;
+    if(q && !(x._hay.indexOf(q)>=0 || (qd && x._dig.some(d=>d.indexOf(qd)>=0)) || (alt && pad4(x.folderCode)===alt))) continue;
+    out.push(x);
+  }
+  return out;
+}
+function renderSearch(matched){
+  const listEl=document.getElementById('trackList');
   if(!matched.length){ listEl.innerHTML='<div class="card"><div class="card-body text-center text-muted py-4"><i class="bi bi-inbox me-1"></i>ไม่พบแฟ้มที่ตรงกับเงื่อนไข</div></div>'; return; }
-  if(matched.length===1 && matched[0].live && kw && !dept && !date){ listEl.innerHTML=''; return openFolder(matched[0].folderCode); }
-
+  const shown=matched.slice(0,SEARCH_LIMIT);
   const liveN=matched.filter(x=>x.live).length, doneN=matched.length-liveN;
   listEl.innerHTML=`<div class="card mb-3">
     <div class="card-header"><i class="bi bi-list-ul me-1"></i>ผลการค้นหา — พบ ${matched.length} รายการ
-      <span class="small text-muted ms-2">(กำลังดำเนินการ ${liveN} &middot; เสร็จแล้ว ${doneN}) — คลิกเพื่อดูไทม์ไลน์</span></div>
-    <div class="card-body p-0">${histHeaderHTML()}${matched.map(histEntryHTML).join('')}</div></div>`;
+      <span class="small text-muted ms-2">(กำลังดำเนินการ ${liveN} &middot; เสร็จ/คืนแล้ว ${doneN}) — คลิกเพื่อดูไทม์ไลน์</span>
+      ${matched.length>SEARCH_LIMIT?`<div class="small text-muted fw-normal mt-1">แสดง ${SEARCH_LIMIT} รายการแรก — พิมพ์เพิ่มเพื่อกรองให้แคบลง</div>`:''}</div>
+    <div class="card-body p-0">${histHeaderHTML()}${shown.map(histEntryHTML).join('')}</div></div>`;
 }
+function scheduleLiveSearch(){ clearTimeout(LIVE_TIMER); LIVE_TIMER=setTimeout(liveSearch, 120); }
+async function liveSearch(){
+  const listEl=document.getElementById('trackList');
+  const resEl=document.getElementById('trackResult'); if(resEl) resEl.innerHTML='';
+  if(!searchActive()){ listEl.innerHTML=''; if(typeof showHistCard==='function') showHistCard(true); return; }
+  if(typeof showHistCard==='function') showHistCard(false);
+  if(!SEARCH_ROWS){
+    listEl.innerHTML='<div class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>กำลังเตรียมข้อมูลค้นหา… (เฉพาะครั้งแรก)</div>';
+    try{ await (SEARCH_PROMISE||loadSearchData()); }
+    catch(err){ listEl.innerHTML=`<div class="alert alert-danger">${esc(err.message)}</div>`; return; }
+    if(!searchActive()){ listEl.innerHTML=''; if(typeof showHistCard==='function') showHistCard(true); return; }
+  }
+  renderSearch(filterSearch(searchQuery()));
+}
+/* กด Enter / ปุ่มค้นหา: ยิงบาร์โค้ดหรือพิมพ์เลขแฟ้ม -> เปิดแฟ้มนั้นเลย · เจอแฟ้มเดียวที่กำลังดำเนินการ -> เปิดรายละเอียด */
+async function doTrack(){
+  clearTimeout(LIVE_TIMER);
+  const s=searchQuery(); const kw=s.alt||s.raw;
+  if(!s.dept && !s.date && /^\d{1,4}$/.test(kw)){
+    const n=parseInt(kw,10);
+    if(n>=1 && n<=TOTAL_FOLDERS){
+      try{
+        const d=await api('getFolder',{folderCode:pad4(kw)});
+        if(d.ok && d.folder && (d.folder.status||'ว่าง')!=='ว่าง'){ document.getElementById('trackList').innerHTML=''; if(typeof showHistCard==='function') showHistCard(false); return renderTrack(d.folder); }
+      }catch(e){}
+    }
+  }
+  await liveSearch();
+  if(s.raw && !s.dept && !s.date && SEARCH_ROWS){
+    const m=filterSearch(s);
+    if(m.length===1 && m[0].live){ document.getElementById('trackList').innerHTML=''; return openFolder(m[0].folderCode); }
+  }
+}
+(function wireLiveSearch(){
+  document.getElementById('trackInput').addEventListener('input', scheduleLiveSearch);
+  document.getElementById('trackDept').addEventListener('change', liveSearch);
+  document.getElementById('trackDate').addEventListener('change', liveSearch);
+})();
 
 /* ---------- รายละเอียดแฟ้ม (อ่านอย่างเดียว) ---------- */
 function renderTrack(f){
   const keys=f.route||routeStations(f.timeline); const dirs=['เข้า','ออก'];   // เฉพาะจุดที่อยู่ในเส้นทางของแฟ้มนี้
   const done={}; (f.logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=l.timestamp; });
-  const seqKeys=[]; keys.forEach(k=>{ seqKeys.push(k+'|เข้า'); seqKeys.push(k+'|ออก'); });
+  // ธุรการ 1: เข้า = ลงทะเบียน · ธุรการ 4: สแกนครั้งเดียว (ออก)
+  const seqKeys=[]; keys.forEach(k=>{ if(k!=='S4') seqKeys.push(k+'|เข้า'); seqKeys.push(k+'|ออก'); });
   let nextIdx=0; while(nextIdx<seqKeys.length && done[seqKeys[nextIdx]]) nextIdx++;
-  let steps=''; let idx=0;
-  keys.forEach(k=>{ dirs.forEach(dir=>{
-    const isDone=!!done[k+'|'+dir]; const isNext=(idx===nextIdx);
+  let steps='';
+  seqKeys.forEach((sk,idx)=>{
+    const [k,dir]=sk.split('|');
+    const isDone=!!done[sk], isNext=(idx===nextIdx);
+    const lbl=(k==='S1'&&dir==='เข้า')?'ลงทะเบียน':(k==='S4'?'สแกนออก (ส่งคืน)':dir);
     steps+=`<div class="step ${isDone?'done':''} ${isNext?'next':''}"><i class="bi ${dir==='เข้า'?'bi-box-arrow-in-right':'bi-box-arrow-right'}"></i>
-      ${esc(stationName(k))}<br><span class="small">${dir}${isDone?' ✓':(isNext?' ⬅ ถัดไป':'')}</span></div>`;
-    idx++;
-  });});
+      ${esc(stationName(k))}<br><span class="small">${lbl}${isDone?' ✓':(isNext?' ⬅ ถัดไป':'')}</span></div>`;
+  });
   const recs=(f.records||[]);
   const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td>${esc(safeType(r.docType))||'—'}</td><td>${esc(r.urgency)||'ปกติ'}</td><td>${thaiDate(r.docDate)}</td></tr>`).join('')
     : '<tr><td colspan="6" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
@@ -668,6 +720,7 @@ function renderTrack(f){
   (f.logs||[]).forEach(l=>{ if(!dw[l.station]) return; const t=new Date(l.timestamp).getTime();
     if(l.direction==='เข้า'){ if(dw[l.station].enter==null||t<dw[l.station].enter) dw[l.station].enter=t; }
     else { if(dw[l.station].leave==null||t>dw[l.station].leave) dw[l.station].leave=t; } });
+  if(dw.S4 && dw.S4.enter==null){ const pv=keys[keys.indexOf('S4')-1]; if(pv && dw[pv] && dw[pv].leave!=null) dw.S4.enter=dw[pv].leave; }
   const nowMs=Date.now(); let firstEnter=null, lastLeave=null;
   const dwellCards=keys.map(k=>{
     const e=dw[k].enter, lv=dw[k].leave;
@@ -745,6 +798,7 @@ function showLoginNotice(){
   if(!WEBAPP_URL || WEBAPP_URL.indexOf('PASTE_YOUR')===0){ document.getElementById('urlWarn').classList.remove('d-none'); setConn(false); return; }
   await loadConfig();
   fillTrackDept();
+  loadSearchData().catch(()=>{});          // เตรียมข้อมูลค้นหาไว้ล่วงหน้า พิมพ์แล้วขึ้นผลทันที
   try{ const d=await api('ping'); setConn(!!(d && d.ok)); }catch(e){ setConn(false); }
   document.getElementById('trackInput').focus();
 })();
