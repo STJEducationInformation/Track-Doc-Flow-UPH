@@ -302,7 +302,7 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">ฝ่ายงาน</label>
-          <select id="trackDept" class="form-select"><option value="">เลือกหน่วยงาน</option></select>
+          <select id="trackDept" class="form-select"><option value="">ทุกฝ่ายงาน</option></select>
         </div>
         <div class="col-md-2">
           <label class="form-label">วันที่เสนอแฟ้ม</label>
@@ -353,7 +353,7 @@ function api(action, params){
     const t = setTimeout(()=>{ cleanup(); reject(new Error("หมดเวลาเชื่อมต่อ")); }, 30000);
     function cleanup(){ try{delete window[cb];}catch(e){} s.remove(); clearTimeout(t); }
     window[cb] = (data)=>{ cleanup();
-      if(data && data.code==='NO_AUTH'){ localStorage.removeItem(TOKEN_KEY); showLoginNotice(); }
+      if(data && data.code==='PUBLIC_OFF' && typeof showLoginNotice==='function') showLoginNotice();
       resolve(data); };
     const q = new URLSearchParams(Object.assign({action, callback:cb}, params||{}));
     s.src = WEBAPP_URL + '?' + q.toString();
@@ -447,12 +447,16 @@ function normalizeScan(raw){
 
 /* ---------- config / dept ---------- */
 async function loadConfig(){
-  try{ const d=await api('getConfig'); if(d && d.ok && d.config) CONFIG=Object.assign({}, DEFAULTS, d.config); }catch(e){}
+  try{ const d=await api('publicConfig'); if(d && d.ok && d.config) CONFIG=Object.assign({}, DEFAULTS, d.config); }catch(e){}
 }
-function deptList(){ return (cfg('departments')||'').split(/[\n,]/).map(s=>s.trim()).filter(Boolean); }
+function deptList(){
+  const list=(cfg('departments')||'').split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
+  (SEARCH_ROWS||[]).forEach(x=>{ const d=(x.department||'').trim(); if(d && list.indexOf(d)<0) list.push(d); });  // รวมฝ่ายงานที่พบในแฟ้มจริงด้วย
+  return list;
+}
 function fillTrackDept(){
   const sel=document.getElementById('trackDept'); if(!sel) return; const cur=sel.value;
-  sel.innerHTML='<option value="">เลือกหน่วยงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.innerHTML='<option value="">ทุกฝ่ายงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   if(cur) sel.value=cur;
 }
 function setConn(ok){
@@ -490,7 +494,7 @@ async function openFolder(code){
   if(prov){ renderTrack(prov); el.scrollIntoView({behavior:'smooth', block:'start'}); }
   else el.innerHTML='<div class="text-muted small">กำลังเปิดแฟ้ม '+fc+'…</div>';
   try{
-    const d=await apiCached('getFolder',{folderCode:fc}, 5000);
+    const d=await apiCached('publicFolder',{folderCode:fc}, 5000);
     if(!d.ok) throw new Error(d.error||'error');
     renderTrack(d.folder);
     if(!prov) el.scrollIntoView({behavior:'smooth', block:'start'});
@@ -615,6 +619,21 @@ function histEntryHTML(x){
     </div>
   </div>`;
 }
+/* ===== ค้นหาชื่อคนไทยแบบยืดหยุ่น: ไม่สนคำนำหน้า เว้นวรรค จุด และวรรณยุกต์ =====
+   เช่น "นางสาวพรพิมล" เจอ "น.ส.พรพิมล" · "สิทธา พิทักษ์" เจอ "สิทธา  พิทักษ์ชาตินนท์" · "ใจเทียง" เจอ "ใจเที่ยง" */
+const TH_TITLES=['ว่าที่ร้อยตรีหญิง','ว่าที่ร้อยตรี','ว่าที่ร.ต.หญิง','ว่าที่ร.ต.','ผู้ช่วยศาสตราจารย์','รองศาสตราจารย์','ศาสตราจารย์',
+  'ทันตแพทย์หญิง','ทันตแพทย์','แพทย์หญิง','นายแพทย์','เภสัชกรหญิง','เภสัชกร','นางสาว','น.ส.','นส.','นาย','นาง',
+  'ดร.','นพ.','พญ.','ทพญ.','ทพ.','ภญ.','ภก.','ผศ.','รศ.','ศ.'];
+const TH_TITLE_RE=new RegExp('(^|\\s)(?:'+TH_TITLES.slice().sort((a,b)=>b.length-a.length).map(t=>t.replace(/\./g,'\\.')).join('|')+')','g');
+function looseTH(s){                              // ตัดเว้นวรรค จุด เครื่องหมาย และวรรณยุกต์ (่ ้ ๊ ๋ ็ ์)
+  return String(s||'').toLowerCase().replace(/\u0E4D\u0E32/g,'\u0E33').replace(/[\u0E47-\u0E4C]/g,'').replace(/[\s.\-_\/()]+/g,'');
+}
+function nameKey(s){                              // เหมือนข้างบน + ตัดคำนำหน้าชื่อ
+  let t=String(s||'').replace(/\u0E4D\u0E32/g,'\u0E33');
+  t=t.replace(TH_TITLE_RE,'$1').replace(TH_TITLE_RE,'$1');
+  return looseTH(t);
+}
+
 /* ===================== ค้นหาทันทีขณะพิมพ์ =====================
    โหลดรายการแฟ้มทั้งหมดมาไว้ในเครื่องครั้งเดียว (อัปเดตเบื้องหลังเป็นระยะ)
    แล้วกรองในเครื่องทุกครั้งที่พิมพ์ — ไม่ต้องรอ server ระหว่างพิมพ์ */
@@ -628,12 +647,14 @@ function prepSearchRow(x){
     dig.push((r.docNumber||'').replace(/[^0-9]/g,'')); dates.push(r.docDate||'');
   });
   x._hay=parts.map(v=>(v||'').toString().toLowerCase()).join(' | ');
+  x._loose=looseTH(parts.join(' '));            // ไม่สนเว้นวรรค/วรรณยุกต์
+  x._nm=nameKey(x.owner);                       // ชื่อผู้เสนอ ไม่สนคำนำหน้า
   x._dig=dig; x._dates=dates;
   return x;
 }
 function loadSearchData(){
-  SEARCH_PROMISE = apiCached('getHistory',{period:'all', limit:'all'}, 60000)
-    .then(d=>{ if(d && d.ok){ SEARCH_ROWS=(d.rows||[]).map(prepSearchRow); } return SEARCH_ROWS; })
+  SEARCH_PROMISE = apiCached('publicHistory',{period:'all', limit:'all'}, 60000)
+    .then(d=>{ if(d && d.ok){ SEARCH_ROWS=(d.rows||[]).map(prepSearchRow); fillTrackDept(); } return SEARCH_ROWS; })
     .catch(err=>{ SEARCH_PROMISE=null; throw err; });
   return SEARCH_PROMISE;
 }
@@ -647,11 +668,13 @@ function searchQuery(){
 function searchActive(){ const s=searchQuery(); return !!(s.raw||s.dept||s.date); }
 function filterSearch(s){
   const q=s.raw.toLowerCase(), qd=s.raw.replace(/[^0-9]/g,''), alt=s.alt?pad4(s.alt):'';
+  const ql=looseTH(s.raw), qn=nameKey(s.raw);
   const out=[];
   for(const x of (SEARCH_ROWS||[])){
     if(s.dept && (x.department||'')!==s.dept) continue;
     if(s.date && x._dates.indexOf(s.date)<0) continue;
-    if(q && !(x._hay.indexOf(q)>=0 || (qd && x._dig.some(d=>d.indexOf(qd)>=0)) || (alt && pad4(x.folderCode)===alt))) continue;
+    if(q && !(x._hay.indexOf(q)>=0 || (ql && x._loose.indexOf(ql)>=0) || (qn && x._nm.indexOf(qn)>=0)
+              || (qd && x._dig.some(d=>d.indexOf(qd)>=0)) || (alt && pad4(x.folderCode)===alt))) continue;
     out.push(x);
   }
   return out;
@@ -689,7 +712,7 @@ async function doTrack(){
     const n=parseInt(kw,10);
     if(n>=1 && n<=TOTAL_FOLDERS){
       try{
-        const d=await api('getFolder',{folderCode:pad4(kw)});
+        const d=await api('publicFolder',{folderCode:pad4(kw)});
         if(d.ok && d.folder && (d.folder.status||'ว่าง')!=='ว่าง'){ document.getElementById('trackList').innerHTML=''; if(typeof showHistCard==='function') showHistCard(false); return renderTrack(d.folder); }
       }catch(e){}
     }
