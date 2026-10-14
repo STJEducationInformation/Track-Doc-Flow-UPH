@@ -471,15 +471,30 @@ function clearTrack(){
   document.getElementById('trackResult').innerHTML='';
   document.getElementById('trackInput').focus();
 }
+/* ข้อมูลแฟ้มจากผลค้นหาที่อยู่บนหน้าจอแล้ว (มีเอกสาร ไทม์ไลน์ ตำแหน่งปัจจุบันครบ) */
+function folderFromRow(x){
+  const f=Object.assign({}, x);
+  const last=(x.logs||[])[0];                          // ไทม์ไลน์เรียงล่าสุดก่อน
+  if(!f.currentStation && last){ f.currentStation=last.station; f.lastDirection=last.direction; }
+  if(!f.route || !f.route.length) f.route=routeStations(f.timeline);
+  if(!f.docType) f.docType=f.docTypeSummary||'';
+  return f;
+}
+/* กดปุ่มรูปตา: แสดงทันทีจากข้อมูลที่มีอยู่ แล้วอัปเดตจาก server เบื้องหลังแบบเงียบ ๆ */
 async function openFolder(code){
   const el=document.getElementById('trackResult');
-  el.innerHTML='<div class="text-muted"><span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลดแฟ้ม…</div>';
+  const fc=pad4(code);
+  const hit=API_CACHE.get('getFolder|'+JSON.stringify({folderCode:fc}));
+  const row=(SEARCH_ROWS||[]).find(x=>x.live && pad4(x.folderCode)===fc);
+  const prov=(hit && hit.v && hit.v.ok) ? hit.v.folder : (row ? folderFromRow(row) : null);
+  if(prov){ renderTrack(prov); el.scrollIntoView({behavior:'smooth', block:'start'}); }
+  else el.innerHTML='<div class="text-muted small">กำลังเปิดแฟ้ม '+fc+'…</div>';
   try{
-    const d=await api('getFolder',{folderCode:pad4(code)});
+    const d=await apiCached('getFolder',{folderCode:fc}, 5000);
     if(!d.ok) throw new Error(d.error||'error');
     renderTrack(d.folder);
-    el.scrollIntoView({behavior:'smooth', block:'start'});
-  }catch(err){ el.innerHTML=`<div class="alert alert-danger">${esc(err.message)}</div>`; }
+    if(!prov) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(err){ if(!prov) el.innerHTML=`<div class="alert alert-danger">${esc(err.message)}</div>`; }
 }
 /* ---------- ป้าย/ไทม์ไลน์ประวัติ ---------- */
 function safeType(v){ const t=(v==null)?'':String(v); return t.indexOf('หนังสือ')===0 ? t : ''; }
