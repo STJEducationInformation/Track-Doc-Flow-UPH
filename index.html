@@ -302,7 +302,7 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">ฝ่ายงาน</label>
-          <select id="trackDept" class="form-select"><option value="">ทุกฝ่ายงาน</option></select>
+          <select id="trackDept" class="form-select"><option value="">เลือกหน่วยงาน</option></select>
         </div>
         <div class="col-md-2">
           <label class="form-label">วันที่เสนอแฟ้ม</label>
@@ -452,7 +452,7 @@ async function loadConfig(){
 function deptList(){ return (cfg('departments')||'').split(/[\n,]/).map(s=>s.trim()).filter(Boolean); }
 function fillTrackDept(){
   const sel=document.getElementById('trackDept'); if(!sel) return; const cur=sel.value;
-  sel.innerHTML='<option value="">ทุกฝ่ายงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.innerHTML='<option value="">เลือกหน่วยงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   if(cur) sel.value=cur;
 }
 function setConn(ok){
