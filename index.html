@@ -281,8 +281,6 @@
       <div class="brand-name">ติดตามสถานะแฟ้ม</div>
       <div class="brand-sub">สำหรับผู้เสนอแฟ้ม / ผู้ใช้งานทั่วไป &middot; ดูข้อมูลอย่างเดียว</div>
     </div>
-    <span id="connBadge" class="conn badge bg-secondary conn-badge"><i class="bi bi-plug me-1"></i>กำลังเชื่อมต่อ…</span>
-    <button id="themeBtn" class="btn btn-sm btn-outline-light py-0 ms-2" onclick="toggleTheme()" title="สลับธีมสี"><i class="bi bi-palette"></i></button>
   </div>
 </div>
 
@@ -302,7 +300,7 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">ฝ่ายงาน</label>
-          <select id="trackDept" class="form-select"><option value="">ทุกฝ่ายงาน</option></select>
+          <select id="trackDept" class="form-select"><option value="">เลือกหน่วยงาน</option></select>
         </div>
         <div class="col-md-2">
           <label class="form-label">วันที่เสนอแฟ้ม</label>
@@ -456,11 +454,12 @@ function deptList(){
 }
 function fillTrackDept(){
   const sel=document.getElementById('trackDept'); if(!sel) return; const cur=sel.value;
-  sel.innerHTML='<option value="">ทุกฝ่ายงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.innerHTML='<option value="">เลือกหน่วยงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   if(cur) sel.value=cur;
 }
 function setConn(ok){
   const b=document.getElementById('connBadge');
+  if(!b) return;                                   // นำป้ายสถานะการเชื่อมต่อออกแล้ว ไม่ต้องทำอะไร
   b.className='conn badge conn-badge '+(ok?'bg-success':'bg-danger');
   b.innerHTML=ok?'<i class="bi bi-plug-fill me-1"></i>เชื่อมต่อแล้ว':'<i class="bi bi-plug me-1"></i>เชื่อมต่อไม่สำเร็จ';
 }
