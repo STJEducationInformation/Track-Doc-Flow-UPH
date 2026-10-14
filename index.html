@@ -302,7 +302,7 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">ฝ่ายงาน</label>
-          <select id="trackDept" class="form-select"><option value="">เลือกหน่วยงาน</option></select>
+          <select id="trackDept" class="form-select"><option value="">ทุกฝ่ายงาน</option></select>
         </div>
         <div class="col-md-2">
           <label class="form-label">วันที่เสนอแฟ้ม</label>
@@ -707,61 +707,72 @@ async function doTrack(){
 })();
 
 /* ---------- รายละเอียดแฟ้ม (อ่านอย่างเดียว) ---------- */
+/* ===== หน้ารายละเอียดแฟ้ม (สำหรับผู้เสนอ) =====
+   แสดงเส้นทางเป็น "ผู้บริหารแต่ละขั้น" แทนชื่อธุรการ · ไม่แสดงเวลาที่แต่ละจุดและประวัติการสแกน
+   (ข้อมูลภายในเหล่านี้ยังดูได้ครบในระบบหลักสำหรับเจ้าหน้าที่) */
+function rongTitleOf(name){ for(let i=1;i<=8;i++){ if(cfg('rong'+i) && cfg('rong'+i)===name) return cfg('rongTitle'+i)||''; } return ''; }
+/* ผู้บริหารของแต่ละจุด ตามที่เลือกไว้ในไทม์ไลน์ของแฟ้มนี้ */
+function stageOf(k, tl){
+  if(k==='S1') return { title:'หัวหน้าสำนักงาน', people:[] };
+  if(k==='S4') return { title:'ส่งคืนเจ้าของแฟ้ม', people:[] };
+  const people=tl.filter(n=>{ const g=classifyExec(n); return k==='S2' ? g==='rong' : (g==='dir'||g==='dean'); });
+  return { title: people.length ? people.join(', ') : (k==='S2'?'รองผู้อำนวยการ':'ผู้อำนวยการ'), people };
+}
+function stageLabel(k, tl){ return stageOf(k, tl).title; }
 function renderTrack(f){
-  const keys=f.route||routeStations(f.timeline); const dirs=['เข้า','ออก'];   // เฉพาะจุดที่อยู่ในเส้นทางของแฟ้มนี้
-  const done={}; (f.logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=l.timestamp; });
-  // ธุรการ 1: เข้า = ลงทะเบียน · ธุรการ 4: สแกนครั้งเดียว (ออก)
-  const seqKeys=[]; keys.forEach(k=>{ if(k!=='S4') seqKeys.push(k+'|เข้า'); seqKeys.push(k+'|ออก'); });
-  let nextIdx=0; while(nextIdx<seqKeys.length && done[seqKeys[nextIdx]]) nextIdx++;
-  let steps='';
-  seqKeys.forEach((sk,idx)=>{
-    const [k,dir]=sk.split('|');
-    const isDone=!!done[sk], isNext=(idx===nextIdx);
-    const lbl=(k==='S1'&&dir==='เข้า')?'ลงทะเบียน':(k==='S4'?'สแกนออก (ส่งคืน)':dir);
-    steps+=`<div class="step ${isDone?'done':''} ${isNext?'next':''}"><i class="bi ${dir==='เข้า'?'bi-box-arrow-in-right':'bi-box-arrow-right'}"></i>
-      ${esc(stationName(k))}<br><span class="small">${lbl}${isDone?' ✓':(isNext?' ⬅ ถัดไป':'')}</span></div>`;
-  });
-  const recs=(f.records||[]);
-  const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td>${esc(safeType(r.docType))||'—'}</td><td>${esc(r.urgency)||'ปกติ'}</td><td>${thaiDate(r.docDate)}</td></tr>`).join('')
-    : '<tr><td colspan="6" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
+  const keys=f.route||routeStations(f.timeline);
   const tl=(f.timeline||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const tlBadges = tl.length ? tl.map(t=>`<span class="badge bg-secondary me-1 mb-1">${esc(t)}</span>`).join('') : '<span class="text-muted">— ยังไม่ระบุ —</span>';
-  const logRows=(f.logs||[]).length ? (f.logs||[]).map(l=>{
-    const dir=l.direction==='เข้า'?'<span class="text-success fw-bold">เข้า</span>':'<span class="text-danger fw-bold">ออก</span>';
-    return `<tr><td class="small">${thaiDateTime(l.timestamp)}</td><td>${esc(stationName(l.station))}</td><td>${dir}</td></tr>`;
-  }).join('') : '<tr><td colspan="3" class="text-center text-muted">ยังไม่มีประวัติการสแกน</td></tr>';
-  const hasEdit=f.editStatus==='มีแก้ไข';
+  const done={}; (f.logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=true; });
+  const finished = f.status==='เสร็จสิ้น' || !!done['S4|ออก'];
 
-  // ระยะเวลาที่แต่ละจุด
-  const dw={}; keys.forEach(k=>dw[k]={enter:null,leave:null});
-  (f.logs||[]).forEach(l=>{ if(!dw[l.station]) return; const t=new Date(l.timestamp).getTime();
-    if(l.direction==='เข้า'){ if(dw[l.station].enter==null||t<dw[l.station].enter) dw[l.station].enter=t; }
-    else { if(dw[l.station].leave==null||t>dw[l.station].leave) dw[l.station].leave=t; } });
-  if(dw.S4 && dw.S4.enter==null){ const pv=keys[keys.indexOf('S4')-1]; if(pv && dw[pv] && dw[pv].leave!=null) dw.S4.enter=dw[pv].leave; }
-  const nowMs=Date.now(); let firstEnter=null, lastLeave=null;
-  const dwellCards=keys.map(k=>{
-    const e=dw[k].enter, lv=dw[k].leave;
-    if(e!=null && (firstEnter==null||e<firstEnter)) firstEnter=e;
-    if(lv!=null && (lastLeave==null||lv>lastLeave)) lastLeave=lv;
-    let val, sub, cls='';
-    if(e==null){ val='—'; sub='ยังไม่ถึง'; }
-    else if(lv==null){ val=fmtDuration(nowMs-e); sub='อยู่ที่นี่ · กำลังนับ'; cls='dwell-now'; }
-    else { val=fmtDuration(lv-e); sub='ผ่านแล้ว'; }
-    return `<div class="col-6 col-md-3"><div class="dwell-box ${cls}">
-      <div class="small text-muted">${esc(stationName(k))}</div>
-      <div class="fw-bold">${esc(val)}</div>
-      <div class="small text-muted">${sub}</div></div></div>`;
+  // ขั้นตอน: ลงทะเบียน → หัวหน้าสำนักงาน → ผู้บริหารตามที่เลือก → ส่งคืน (กล่องละขั้น ไม่มีเวลา)
+  const stages=[{ id:'REG', title:'ลงทะเบียนรับแฟ้ม', people:[], state:'done', text:'รับเข้าระบบแล้ว ✓' }];
+  let prevDone=true;
+  keys.forEach(k=>{
+    const st=stageOf(k, tl);
+    const out=!!done[k+'|ออก'] || (finished);
+    const inside = (k==='S1') ? true : (k==='S4' ? prevDone : !!done[k+'|เข้า']);
+    let state, text;
+    if(out){ state='done'; text = k==='S4' ? 'ส่งคืนแล้ว ✓' : 'ผ่านแล้ว ✓'; }
+    else if(inside && prevDone){ state='active'; text = k==='S1' ? 'อยู่ระหว่างดำเนินการ' : (k==='S4' ? 'ผ่านผู้บริหารครบแล้ว รอส่งคืน' : 'อยู่ระหว่างเสนอ'); }
+    else if(prevDone){ state='transit'; text='กำลังส่งไปเสนอ'; }
+    else { state='wait'; text='ยังไม่ถึง'; }
+    stages.push({ id:k, title:st.title, people:st.people, state, text });
+    prevDone = (state==='done');
+  });
+  const icon={REG:'bi-journal-check', S1:'bi-person-badge', S2:'bi-person-check', S3:'bi-award', S4:'bi-arrow-return-left'};
+  const steps=stages.map(sg=>{
+    const cls = sg.state==='done' ? 'done' : ((sg.state==='active'||sg.state==='transit') ? 'next' : '');
+    const who = sg.people.length
+      ? sg.people.map(n=>{ const t=rongTitleOf(n); return `<div>${esc(n)}${t?`<div class="small fw-normal opacity-75">${esc(t)}</div>`:''}</div>`; }).join('')
+      : `<div>${esc(sg.title)}</div>`;
+    return `<div class="step ${cls}"><i class="bi ${icon[sg.id]||'bi-circle'}"></i>${who}<span class="small">${sg.text}</span></div>`;
   }).join('');
-  let totalTxt='—';
-  if(firstEnter!=null){ const endMs=(f.status==='เสร็จสิ้น' && lastLeave!=null) ? lastLeave : nowMs; totalTxt=fmtDuration(endMs-firstEnter) || 'น้อยกว่า 1 นาที'; }
+
+  // สถานะปัจจุบัน (บอกเป็นผู้บริหาร ไม่ระบุชื่อธุรการ)
+  let nowTxt;
+  if(finished) nowTxt='เสร็จสิ้น — ส่งคืนเจ้าของแฟ้มแล้ว';
+  else {
+    const cur=stages.find(sg=>sg.state==='active'||sg.state==='transit');
+    if(!cur) nowTxt='—';
+    else if(cur.id==='S1') nowTxt='อยู่ที่หัวหน้าสำนักงาน';
+    else if(cur.id==='S4') nowTxt='ผ่านผู้บริหารครบแล้ว — รอส่งคืนเจ้าของแฟ้ม';
+    else nowTxt=(cur.state==='transit'?'กำลังส่งไปเสนอ ':'อยู่ระหว่างเสนอ ')+cur.title;
+  }
+
+  const recs=(f.records||[]);
+  const recRows = recs.length ? recs.map((r,i)=>`<tr><td>${i+1}</td><td class="text-nowrap">${esc(r.docNumber)||'—'}</td><td>${esc(r.subject)||'—'}</td><td class="text-nowrap">${esc(safeType(r.docType))||'—'}</td><td class="text-nowrap">${esc(r.urgency)||'ปกติ'}</td><td class="text-nowrap">${thaiDate(r.docDate)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="text-center text-muted">ไม่มีรายการเอกสาร</td></tr>';
+  const tlBadges = tl.length ? tl.map(t=>`<span class="badge bg-secondary me-1 mb-1">${esc(t)}</span>`).join('') : '<span class="text-muted">— ยังไม่ระบุ —</span>';
+  const hasEdit=f.editStatus==='มีแก้ไข';
   const editBanner=hasEdit ? `<div class="alert alert-warning py-2 mb-3">
-      <i class="bi bi-exclamation-triangle-fill me-1"></i><b>แฟ้มนี้มีการแก้ไข</b> ที่ ${esc(stationName(f.editStation))}
-      ${f.editNote?(' &middot; '+esc(f.editNote)):''} <span class="text-muted small">(${thaiDateTime(f.editAt)})</span></div>` : '';
+      <i class="bi bi-exclamation-triangle-fill me-1"></i><b>แฟ้มนี้มีการแก้ไข</b>${f.editStation?(' ขั้น '+esc(stageLabel(f.editStation, tl))):''}
+      ${f.editNote?(' &middot; '+esc(f.editNote)):''}</div>` : '';
 
   document.getElementById('trackResult').innerHTML=`
     <div class="card mb-3">
       <div class="card-header d-flex align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-folder2 me-1"></i>แฟ้ม ${pad4(f.folderCode)}</span> ${statusBadge(f.status)} ${editBadge(f)}
+        <span><i class="bi bi-folder2 me-1"></i>แฟ้ม ${pad4(f.folderCode)}</span> ${statusBadge(f.status)} ${hasEdit?'<span class="badge bg-warning text-dark ms-1"><i class="bi bi-pencil-fill me-1"></i>มีแก้ไข</span>':''}
         <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="document.getElementById('trackResult').innerHTML='';window.scrollTo({top:0,behavior:'smooth'})"><i class="bi bi-arrow-left me-1"></i>กลับไปค้นหา</button>
       </div>
       <div class="card-body">
@@ -770,34 +781,19 @@ function renderTrack(f){
           <div class="col-md-3"><span class="text-muted small">ผู้เสนอ (เจ้าของแฟ้ม)</span><div class="fw-semibold">${esc(f.owner)||'—'}</div></div>
           <div class="col-md-3"><span class="text-muted small">ฝ่ายงาน</span><div class="fw-semibold">${esc(f.department)||'—'}</div></div>
           <div class="col-md-2"><span class="text-muted small">ประเภท</span><div class="fw-semibold">${esc(f.docType)||'—'}</div></div>
-          <div class="col-md-4"><span class="text-muted small">ตำแหน่งปัจจุบัน</span><div class="fw-semibold">${esc(stationName(f.currentStation))||'—'} ${f.lastDirection?('('+esc(f.lastDirection)+')'):''}</div></div>
+          <div class="col-md-4"><span class="text-muted small">สถานะปัจจุบัน</span><div class="fw-semibold">${esc(nowTxt)}</div></div>
         </div>
         <div class="mb-2"><span class="text-muted small">ผู้ที่ต้องเสนอ (ไทม์ไลน์):</span><div class="mt-1">${tlBadges}</div></div>
-        <div class="mb-1 text-muted small">เส้นทางของแฟ้มนี้: <b>${keys.map(k=>esc(stationName(k))).join(' → ')}</b>${keys.length<4?` <span class="badge bg-info-subtle text-info-emphasis fw-normal ms-1">ข้าม ${['S1','S2','S3','S4'].filter(k=>keys.indexOf(k)<0).map(k=>esc(stationName(k))).join(', ')} ตามผู้บริหารที่เลือก</span>`:''}</div>
+        <div class="mb-1 text-muted small">เส้นทางของแฟ้มนี้: <b>${['ลงทะเบียน'].concat(keys.map(k=>stageLabel(k, tl))).map(esc).join(' → ')}</b></div>
         <div class="stepper mb-1">${steps}</div>
       </div>
     </div>
 
     <div class="card mb-3">
-      <div class="card-header d-flex align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-stopwatch me-1"></i>ระยะเวลาที่แต่ละจุด</span>
-        <span class="ms-auto small">รวมเวลาในระบบ: <b>${esc(totalTxt)}</b>
-        ${(f.status!=='เสร็จสิ้น' && firstEnter!=null)?'<span class="badge bg-warning text-dark ms-1">กำลังดำเนินการ</span>':''}</span>
-      </div>
-      <div class="card-body"><div class="row g-2">${dwellCards}</div></div>
-    </div>
-
-    <div class="row g-3">
-      <div class="col-lg-6"><div class="card h-100">
-        <div class="card-header"><i class="bi bi-list-ol me-1"></i>รายการเอกสารในแฟ้ม</div>
-        <div class="card-body p-0"><div class="table-responsive">
-          <table class="table table-sm mb-0"><thead class="table-light"><tr><th>#</th><th>เลขที่หนังสือ</th><th>ชื่อเรื่อง</th><th>ประเภท</th><th>ชั้นความเร็ว</th><th>วันที่</th></tr></thead>
-          <tbody>${recRows}</tbody></table></div></div></div></div>
-      <div class="col-lg-6"><div class="card h-100">
-        <div class="card-header"><i class="bi bi-clock-history me-1"></i>ประวัติการสแกน</div>
-        <div class="card-body p-0"><div class="table-responsive" style="max-height:320px;overflow:auto">
-          <table class="table table-sm mb-0"><thead class="table-light"><tr><th>เวลา</th><th>จุด</th><th>ทิศทาง</th></tr></thead>
-          <tbody>${logRows}</tbody></table></div></div></div></div>
+      <div class="card-header"><i class="bi bi-list-ol me-1"></i>รายการเอกสารในแฟ้ม <span class="badge bg-secondary ms-1">${recs.length}</span></div>
+      <div class="card-body p-0"><div class="table-responsive">
+        <table class="table table-sm mb-0"><thead class="table-light"><tr><th style="width:44px">#</th><th>เลขที่หนังสือ</th><th>ชื่อเรื่อง</th><th>ประเภท</th><th>ชั้นความเร็ว</th><th>วันที่</th></tr></thead>
+        <tbody>${recRows}</tbody></table></div></div>
     </div>`;
 }
 
