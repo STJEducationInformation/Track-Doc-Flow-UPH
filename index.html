@@ -25,7 +25,7 @@
 
   /* ---------- Header ---------- */
   .topbar{ background:linear-gradient(180deg,var(--sidebar),var(--sidebar-2)); color:#eafffb; }
-  .topbar .wrap{ max-width:1120px; margin:0 auto; padding:18px 20px; display:flex; align-items:center; gap:14px; }
+  .topbar .wrap{ max-width:none; margin:0; padding:18px clamp(16px,2.5vw,40px); display:flex; align-items:center; gap:14px; }
   .topbar .logo{ width:48px; height:48px; border-radius:12px; background:#fff; overflow:hidden;
     display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px -4px rgba(0,0,0,.4); }
   .topbar .logo img{ width:100%; height:100%; object-fit:contain; padding:3px; }
@@ -33,7 +33,9 @@
   .topbar .brand-sub{ color:#8fc2bd; font-size:.78rem; }
   .topbar .conn{ margin-left:auto; }
 
-  .page{ max-width:1120px; margin:0 auto; padding:22px 20px 48px; }
+  /* เต็มหน้าจอ: ตารางผลค้นหามีพื้นที่พอ ไม่ล้นออกนอกกรอบ */
+  .page{ max-width:none; margin:0; padding:22px clamp(16px,2.5vw,40px) 48px; }
+  #trackList .card-body, #trackResult .card-body{ overflow-x:auto; }
 
   /* ---------- Cards ---------- */
   .card{ border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow-sm); background:var(--surface); }
