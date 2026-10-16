@@ -256,6 +256,64 @@
   /* ลิงก์ใช้สีม่วงของระบบ */
   :root{ --bs-link-color-rgb:107,61,154; --bs-link-hover-color-rgb:70,38,106; }
   html[data-theme="teal"]{ --bs-link-color-rgb:13,148,136; --bs-link-hover-color-rgb:17,94,86; }
+  /* ---------- ไทม์ไลน์ของแฟ้ม (ตอนกางดู) ---------- */
+  .hist-detail{ background:var(--bg); }
+  .jr{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px 14px; margin:2px 0 4px; }
+  .jr-top{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 24px; margin-bottom:18px; }
+  .jr-now{ display:flex; align-items:center; gap:8px; font-weight:600; color:var(--ink); }
+  .jr-dot{ width:10px; height:10px; border-radius:50%; background:var(--line); flex:0 0 auto; }
+  .jr-now.cur .jr-dot{ background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); }
+  .jr-now.done .jr-dot{ background:var(--ok); box-shadow:0 0 0 4px var(--ok-soft); }
+  .jr-prog{ display:flex; align-items:center; gap:10px; min-width:240px; }
+  .jr-bar{ flex:1; height:8px; border-radius:99px; background:var(--neutral-soft); overflow:hidden; }
+  .jr-bar>span{ display:block; height:100%; background:var(--ok); border-radius:99px; }
+  .jr-prog-t{ font-size:.8rem; color:var(--muted); white-space:nowrap; }
+  .jr-steps{ list-style:none; margin:0; padding:0; display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); }
+  .jr-step{ position:relative; text-align:center; padding:0 8px; }
+  .jr-step::before{ content:''; position:absolute; top:17px; left:calc(-50% + 24px); right:calc(50% + 24px); height:3px; border-radius:2px; background:var(--line); }
+  .jr-step:first-child::before{ display:none; }
+  .jr-step.done::before{ background:var(--ok); }
+  .jr-step.cur::before{ background:var(--accent); }
+  .jr-step.wait::before{ background:repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 11px); }
+  .jr-ico{ width:36px; height:36px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:1rem;
+    border:2px solid var(--line); background:var(--surface); color:var(--muted); position:relative; z-index:1; }
+  .jr-step.done .jr-ico{ background:var(--ok); border-color:var(--ok); color:#fff; }
+  .jr-step.cur .jr-ico{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); box-shadow:0 0 0 5px var(--accent-soft); }
+  .jr-step.edit .jr-ico{ border-color:var(--danger); box-shadow:0 0 0 5px var(--danger-soft); }
+  .jr-txt{ margin-top:9px; }
+  .jr-t{ font-weight:600; font-size:.86rem; line-height:1.3; color:var(--ink); word-break:break-word; }
+  .jr-step.wait .jr-t{ color:var(--muted); font-weight:500; }
+  .jr-st{ font-size:.76rem; margin-top:3px; color:var(--muted); }
+  .jr-step.done .jr-st{ color:var(--ok); }
+  .jr-step.cur .jr-st{ color:var(--accent-ink); font-weight:600; }
+  .jr-s{ font-size:.74rem; color:var(--muted); line-height:1.35; margin-top:1px; }
+  .jr-here, .jr-edit{ display:inline-block; margin-top:6px; font-size:.7rem; font-weight:600; padding:.15em .6em; border-radius:99px; }
+  .jr-here{ background:var(--accent-ink); color:#fff; }
+  .jr-edit{ background:var(--danger-soft); color:var(--danger); margin-left:4px; }
+  .jr-legend{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin-top:14px; font-size:.74rem; color:var(--muted); }
+  .jr-legend i{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
+  .jr-legend i.done{ background:var(--ok); } .jr-legend i.cur{ background:var(--accent); } .jr-legend i.wait{ background:var(--line); }
+  .jr-docs, .jr-edits{ margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+  .jr-sec{ font-size:.82rem; font-weight:600; color:var(--muted); margin-bottom:8px; }
+  .jr-count{ display:inline-block; min-width:20px; text-align:center; font-size:.72rem; padding:.05em .45em; border-radius:99px; background:var(--neutral-soft); color:var(--neutral-ink); margin-left:4px; }
+  .jr-doc{ display:flex; gap:12px; align-items:flex-start; padding:9px 12px; border-radius:10px; background:var(--bg); margin-bottom:6px; }
+  .jr-no{ flex:0 0 24px; height:24px; border-radius:50%; background:var(--brand-soft); color:var(--brand-700); font-size:.75rem; font-weight:600;
+    display:inline-flex; align-items:center; justify-content:center; margin-top:1px; }
+  .jr-doc-main{ flex:1; min-width:0; }
+  .jr-doc-sub{ font-size:.86rem; color:var(--ink); margin-top:2px; }
+  .jr-doc-meta{ font-size:.76rem; color:var(--muted); text-align:right; white-space:nowrap; }
+  .jr-edit-row{ display:flex; gap:10px; align-items:flex-start; font-size:.84rem; padding:4px 0; }
+  .jr-edit-dot{ flex:0 0 8px; height:8px; border-radius:50%; background:var(--danger); margin-top:7px; }
+  /* จอแคบ: เรียงขั้นลงแนวตั้ง */
+  @media (max-width: 767.98px){
+    .jr-steps{ grid-auto-flow:row; }
+    .jr-step{ display:grid; grid-template-columns:36px 1fr; column-gap:12px; text-align:left; padding:0 0 16px; }
+    .jr-step::before{ display:none; }
+    .jr-step:not(:last-child)::after{ content:''; position:absolute; left:16.5px; top:40px; bottom:2px; width:3px; border-radius:2px; background:var(--line); }
+    .jr-step.done:not(:last-child)::after{ background:var(--ok); }
+    .jr-txt{ margin-top:6px; }
+    .jr-doc-meta{ display:none; }
+  }
   /* ---------- ลดการเคลื่อนไหวสำหรับผู้ที่ตั้งค่าไว้ ---------- */
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; transition:none !important; }
@@ -281,6 +339,8 @@
       <div class="brand-name">ติดตามสถานะแฟ้ม</div>
       <div class="brand-sub">สำหรับผู้เสนอแฟ้ม / ผู้ใช้งานทั่วไป &middot; ดูข้อมูลอย่างเดียว</div>
     </div>
+    <span id="connBadge" class="conn badge bg-secondary conn-badge"><i class="bi bi-plug me-1"></i>กำลังเชื่อมต่อ…</span>
+    <button id="themeBtn" class="btn btn-sm btn-outline-light py-0 ms-2" onclick="toggleTheme()" title="สลับธีมสี"><i class="bi bi-palette"></i></button>
   </div>
 </div>
 
@@ -300,7 +360,7 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">ฝ่ายงาน</label>
-          <select id="trackDept" class="form-select"><option value="">เลือกหน่วยงาน</option></select>
+          <select id="trackDept" class="form-select"><option value="">ทุกฝ่ายงาน</option></select>
         </div>
         <div class="col-md-2">
           <label class="form-label">วันที่เสนอแฟ้ม</label>
@@ -351,7 +411,7 @@ function api(action, params){
     const t = setTimeout(()=>{ cleanup(); reject(new Error("หมดเวลาเชื่อมต่อ")); }, 30000);
     function cleanup(){ try{delete window[cb];}catch(e){} s.remove(); clearTimeout(t); }
     window[cb] = (data)=>{ cleanup();
-      if(data && data.code==='PUBLIC_OFF' && typeof showLoginNotice==='function') showLoginNotice();
+      if(data && data.code==='NO_AUTH'){ localStorage.removeItem(TOKEN_KEY); showLoginNotice(); }
       resolve(data); };
     const q = new URLSearchParams(Object.assign({action, callback:cb}, params||{}));
     s.src = WEBAPP_URL + '?' + q.toString();
@@ -445,21 +505,27 @@ function normalizeScan(raw){
 
 /* ---------- config / dept ---------- */
 async function loadConfig(){
-  try{ const d=await api('publicConfig'); if(d && d.ok && d.config) CONFIG=Object.assign({}, DEFAULTS, d.config); }catch(e){}
+  try{ const d=await api('getConfig'); if(d && d.ok && d.config) CONFIG=Object.assign({}, DEFAULTS, d.config); }catch(e){}
 }
+/* ===== ชื่อฝ่ายงาน: ถือว่าชื่อที่ต่างกันแค่ส่วนที่มองไม่เห็นเป็นฝ่ายเดียวกัน =====
+   (เว้นวรรคเกิน · ตัวอักษรล่องหนจากการคัดลอก · "ํา" กับ "ำ") */
+function cleanDept(s){
+  return String(s||'').normalize('NFC').replace(/\u0E4D\u0E32/g,'\u0E33').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'')
+    .replace(/[\s\u00A0]+/g,' ').trim();
+}
+function deptKey(s){ return cleanDept(s).replace(/ /g,'').toLowerCase(); }
 function deptList(){
-  const list=(cfg('departments')||'').split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
-  (SEARCH_ROWS||[]).forEach(x=>{ const d=(x.department||'').trim(); if(d && list.indexOf(d)<0) list.push(d); });  // รวมฝ่ายงานที่พบในแฟ้มจริงด้วย
-  return list;
+  const seen=new Set(), out=[];
+  (cfg('departments')||'').split(/[\n,]/).map(cleanDept).filter(Boolean).forEach(d=>{ const k=deptKey(d); if(!seen.has(k)){ seen.add(k); out.push(d); } });
+  return out;
 }
 function fillTrackDept(){
   const sel=document.getElementById('trackDept'); if(!sel) return; const cur=sel.value;
-  sel.innerHTML='<option value="">เลือกหน่วยงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.innerHTML='<option value="">ทุกฝ่ายงาน</option>'+deptList().map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   if(cur) sel.value=cur;
 }
 function setConn(ok){
   const b=document.getElementById('connBadge');
-  if(!b) return;                                   // นำป้ายสถานะการเชื่อมต่อออกแล้ว ไม่ต้องทำอะไร
   b.className='conn badge conn-badge '+(ok?'bg-success':'bg-danger');
   b.innerHTML=ok?'<i class="bi bi-plug-fill me-1"></i>เชื่อมต่อแล้ว':'<i class="bi bi-plug me-1"></i>เชื่อมต่อไม่สำเร็จ';
 }
@@ -493,7 +559,7 @@ async function openFolder(code){
   if(prov){ renderTrack(prov); el.scrollIntoView({behavior:'smooth', block:'start'}); }
   else el.innerHTML='<div class="text-muted small">กำลังเปิดแฟ้ม '+fc+'…</div>';
   try{
-    const d=await apiCached('publicFolder',{folderCode:fc}, 5000);
+    const d=await apiCached('getFolder',{folderCode:fc}, 5000);
     if(!d.ok) throw new Error(d.error||'error');
     renderTrack(d.folder);
     if(!prov) el.scrollIntoView({behavior:'smooth', block:'start'});
@@ -528,47 +594,102 @@ function routeStations(timeline){
   const st=['S1']; if(rong) st.push('S2'); if(high) st.push('S3'); st.push('S4');
   return st;
 }
-function histTimeline(logs, timeline){
-  const done={}; (logs||[]).forEach(l=>{ done[l.station+'|'+l.direction]=l.timestamp; });
+const JOURNEY_MODE='public';
+/* ===================== ไทม์ไลน์ของแฟ้ม (ตอนกางดูในรายการ) =====================
+   ขั้น: ลงทะเบียน → หัวหน้าสำนักงาน → ผู้บริหารที่เลือก → ส่งคืนเจ้าของแฟ้ม
+   สี: เขียว = ผ่านแล้ว · ทอง = อยู่ที่นี่ · เทา = ยังไม่ถึง · แดง = มีแก้ไข
+   staff = ระบบหลัก (แสดงชื่อธุรการและเวลา) · public = หน้าผู้เสนอ (ไม่แสดงชื่อธุรการและเวลา) */
+const JR_MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function jrTime(iso){
+  if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return '';
   const p=n=>String(n).padStart(2,'0');
-  const tfmt=iso=>{ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return ''; return thaiDate(iso)+' '+p(d.getHours())+':'+p(d.getMinutes()); };
+  return d.getDate()+' '+JR_MONTHS[d.getMonth()]+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function jrStages(logs, timeline, x){
   const route=routeStations(timeline);
-  const execs=(timeline||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const rongNames=[], highNames=[], deanNames=[];
-  execs.forEach(nm=>{ const g=classifyExec(nm); if(g==='dean') deanNames.push(nm); else if(g==='dir') highNames.push(nm); else if(g==='rong') rongNames.push(nm); });
-  const midHigh=deanNames.concat(highNames);         // คณบดี อยู่เหนือ ผอ.
-  const stNode=(k)=>{
-    const inT=done[k+'|เข้า'], outT=done[k+'|ออก'];
-    const prev=route[route.indexOf(k)-1];
-    // ธุรการ 4 สแกนครั้งเดียว: ถือว่า "มาถึง" เมื่อจุดก่อนหน้าสแกนออกแล้ว
-    const arrived=!!inT || (k==='S4' && !!prev && !!done[prev+'|ออก']);
-    const inLbl=(k==='S1')?'ลงทะเบียน ':'เข้า ';
-    let times;
-    if(inT) times=inLbl+tfmt(inT)+(outT?('<br>ออก '+tfmt(outT)):'');
-    else if(outT) times='ออก '+tfmt(outT);
-    else if(arrived) times='รอสแกนออก';
-    else times='<span class="text-muted">ยังไม่ถึง</span>';
-    return { reached:!!(inT||outT||arrived), cls:outT?'done':(arrived?'active':''),
-      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${esc(stationName(k))}</div><div class="hist-tl-times">${times}</div>` };
-  };
-  /* ป้ายผู้บริหาร: ผ่านแล้วเมื่อจุดถัดไปรับเข้า, อยู่ช่วงนี้เมื่อจุดก่อนหน้าสแกนออกแล้ว */
-  const lbNode=(names, prevSt, nextSt)=>{
-    const started=!!done[prevSt+'|ออก'], finished=!!(done[nextSt+'|เข้า']||done[nextSt+'|ออก']);
-    const txt=finished?'ผ่านแล้ว':(started?'อยู่ช่วงนี้':'<span class="text-muted">ยังไม่ถึง</span>');
-    return { reached:started, cls:'label '+(finished?'done':(started?'active':'')),
-      inner:`<div class="hist-tl-dot"></div><div class="hist-tl-name">${names.map(n=>esc(n)).join('<br>')}</div><div class="hist-tl-times">${txt}</div>` };
-  };
-  const nextOf=k=>route[route.indexOf(k)+1];
-  const nodes=[stNode('S1'), lbNode(['หัวหน้าสำนักงาน'],'S1',nextOf('S1'))];
-  if(route.indexOf('S2')>=0){ nodes.push(stNode('S2')); if(rongNames.length) nodes.push(lbNode(rongNames,'S2',nextOf('S2'))); }
-  if(route.indexOf('S3')>=0){ nodes.push(stNode('S3')); if(midHigh.length) nodes.push(lbNode(midHigh,'S3',nextOf('S3'))); }
-  nodes.push(stNode('S4'));
-  let html='<div class="hist-tl">';
-  nodes.forEach((nd,i)=>{
-    if(i>0) html+=`<div class="hist-tl-line ${nd.reached?'done':''}"></div>`;
-    html+=`<div class="hist-tl-node ${nd.cls}">${nd.inner}</div>`;
+  const tl=(timeline||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const at={};
+  (logs||[]).forEach(l=>{ const k=l.station+'|'+l.direction; if(!at[k] || new Date(l.timestamp)>new Date(at[k])) at[k]=l.timestamp; });
+  const finished=(x && x.status==='เสร็จสิ้น') || !!at['S4|ออก'];
+  const people=k=>tl.filter(n=>{ const g=classifyExec(n); return k==='S2' ? g==='rong' : (g==='dir'||g==='dean'); });
+  const icon={S1:'bi-person-badge', S2:'bi-person-check', S3:'bi-award', S4:'bi-arrow-return-left'};
+  const st=[{ id:'REG', icon:'bi-journal-check', title:'ลงทะเบียนรับแฟ้ม', state:'done', text:'รับเข้าระบบแล้ว', inAt:at['S1|เข้า'] }];
+  let prevDone=true;
+  route.forEach(k=>{
+    const ppl=(k==='S2'||k==='S3') ? people(k) : [];
+    const title = k==='S1' ? 'หัวหน้าสำนักงาน' : (k==='S4' ? 'ส่งคืนเจ้าของแฟ้ม' : (ppl.join(', ') || (k==='S2'?'รองผู้อำนวยการ':'ผู้อำนวยการ')));
+    const out=!!at[k+'|ออก'] || finished;
+    const inside = k==='S1' ? true : (k==='S4' ? prevDone : !!at[k+'|เข้า']);
+    let state, text;
+    if(out){ state='done'; text = k==='S4' ? 'ส่งคืนแล้ว' : 'ผ่านแล้ว'; }
+    else if(prevDone && inside){ state='cur'; text = k==='S1' ? 'อยู่ระหว่างดำเนินการ' : (k==='S4' ? 'รอส่งคืน' : 'อยู่ระหว่างเสนอ'); }
+    else if(prevDone){ state='cur'; text='กำลังส่งไปเสนอ'; }
+    else { state='wait'; text='ยังไม่ถึง'; }
+    st.push({ id:k, icon:icon[k], title, people:ppl, state, text, inAt:at[k+'|เข้า'], outAt:at[k+'|ออก'] });
+    prevDone=(state==='done');
   });
-  return html+'</div>';
+  if(x && x.editStatus==='มีแก้ไข'){ const e=st.find(s=>s.id===(x.editStation||'')); if(e) e.edit=true; }
+  return { stages:st, finished };
+}
+function histTimeline(logs, timeline, x){
+  const { stages, finished }=jrStages(logs, timeline, x);
+  const doneN=stages.filter(s=>s.state==='done').length, total=stages.length;
+  const cur=stages.find(s=>s.state==='cur');
+  let now, nowCls;
+  if(finished){ now='เสร็จสิ้น — ส่งคืนเจ้าของแฟ้มแล้ว'; nowCls='done'; }
+  else if(x && x.live===false){ now='ปิดแฟ้มแล้ว'; nowCls='done'; }
+  else if(!cur){ now='—'; nowCls='wait'; }
+  else if(cur.id==='S1'){ now='อยู่ที่หัวหน้าสำนักงาน'; nowCls='cur'; }
+  else if(cur.id==='S4'){ now='ผ่านผู้บริหารครบแล้ว — รอส่งคืน'; nowCls='cur'; }
+  else { now=(cur.text==='กำลังส่งไปเสนอ'?'กำลังส่งไปเสนอ ':'อยู่ระหว่างเสนอ ')+cur.title; nowCls='cur'; }
+  const staff = JOURNEY_MODE==='staff';
+  const sub=s=>{
+    const lines=[];
+    if(staff){
+      if(s.id==='REG') lines.push(esc(stationName('S1'))+(s.inAt?' · '+jrTime(s.inAt):''));
+      else if(s.id==='S1'){ if(s.outAt) lines.push('ส่งต่อ '+jrTime(s.outAt)); }
+      else if(s.id==='S4'){ lines.push(esc(stationName('S4'))+(s.outAt?' · '+jrTime(s.outAt):'')); }
+      else {
+        lines.push('ธุรการ '+esc(stationName(s.id)));
+        const t=[s.inAt?'เข้า '+jrTime(s.inAt):'', s.outAt?'ออก '+jrTime(s.outAt):''].filter(Boolean).join(' · ');
+        if(t) lines.push(t);
+      }
+    }
+    return `<div class="jr-st">${s.state==='done'?'<i class="bi bi-check-lg me-1"></i>':''}${esc(s.text)}</div>`+
+           lines.map(l=>`<div class="jr-s">${l}</div>`).join('');
+  };
+  const steps=stages.map((s,i)=>`<li class="jr-step ${s.state}${s.edit?' edit':''}">
+      <span class="jr-ico">${s.state==='done'?'<i class="bi bi-check-lg"></i>':`<i class="bi ${s.icon}"></i>`}</span>
+      <div class="jr-txt"><div class="jr-t">${esc(s.title)}</div>${sub(s)}
+        ${s.state==='cur'?'<span class="jr-here">อยู่ที่นี่</span>':''}${s.edit?'<span class="jr-edit"><i class="bi bi-pencil-fill me-1"></i>มีแก้ไข</span>':''}</div>
+    </li>`).join('');
+  return `<div class="jr-top">
+      <div class="jr-now ${nowCls}"><span class="jr-dot"></span>${esc(now)}</div>
+      <div class="jr-prog"><div class="jr-bar"><span style="width:${Math.round(doneN/total*100)}%"></span></div>
+        <span class="jr-prog-t">ผ่านแล้ว ${doneN} จาก ${total} ขั้น</span></div>
+    </div>
+    <ol class="jr-steps">${steps}</ol>
+    <div class="jr-legend"><span><i class="done"></i>ผ่านแล้ว</span><span><i class="cur"></i>อยู่ที่นี่</span><span><i class="wait"></i>ยังไม่ถึง</span></div>`;
+}
+/* รายการเอกสารในแฟ้ม (แบบรายการอ่านง่าย) */
+function jrDocs(recs){
+  if(!recs || !recs.length) return '<div class="jr-docs"><div class="jr-sec">เอกสารในแฟ้ม</div><div class="text-muted small">— ไม่มีรายการเอกสาร —</div></div>';
+  return `<div class="jr-docs"><div class="jr-sec">เอกสารในแฟ้ม <span class="jr-count">${recs.length}</span></div>`+
+    recs.map((r,i)=>`<div class="jr-doc"><span class="jr-no">${i+1}</span>
+      <div class="jr-doc-main"><div><b>${esc(r.docNumber)||'—'}</b>${r.urgency&&r.urgency!=='ปกติ'?urgencyBadge(r.urgency):''}</div>
+        <div class="jr-doc-sub">${esc(r.subject)||'<span class="text-muted">—</span>'}</div></div>
+      <div class="jr-doc-meta">${esc(safeType(r.docType))||''}${r.docDate?'<div>'+thaiDate(r.docDate)+'</div>':''}</div></div>`).join('')+
+    '</div>';
+}
+/* ประวัติการแจ้งแก้ไข (หน้าผู้เสนอแสดงเป็นขั้นของผู้บริหาร ไม่แสดงชื่อธุรการ) */
+function jrEdits(logs, timeline){
+  if(!logs || !logs.length) return '';
+  const staff = JOURNEY_MODE==='staff';
+  const where=k=>{ if(!k) return ''; if(staff) return ' · '+esc(stationName(k));
+    const s=jrStages([], timeline, null).stages.find(z=>z.id===k); return s?(' · ขั้น '+esc(s.title)):''; };
+  return `<div class="jr-edits"><div class="jr-sec"><i class="bi bi-pencil-square me-1"></i>ประวัติการแก้ไข <span class="jr-count">${logs.length}</span></div>`+
+    logs.map(l=>`<div class="jr-edit-row"><span class="jr-edit-dot"></span><div>${esc(l.action||'แจ้งแก้ไข')}${where(l.station)}${l.note?(' — '+esc(l.note)):''}
+      ${staff?`<div class="jr-s">${jrTime(l.timestamp)}</div>`:''}</div></div>`).join('')+'</div>';
 }
 function toggleHist(head){
   const item=head.closest('.hist-item');
@@ -612,9 +733,12 @@ function histEntryHTML(x){
       <div class="hist-cell col-time time">${when}</div>
       <div class="text-end">${viewBtn}</div>
     </div>
-    <div class="hist-detail px-3 pb-3" style="display:none">
-      ${histTimeline(x.logs, x.timeline)}
-      <div class="small mt-2">${recsHtml}</div>
+    <div class="hist-detail px-3 pb-3 pt-2" style="display:none">
+      <div class="jr">
+        ${histTimeline(x.logs, x.timeline, x)}
+        ${jrDocs(recs)}
+        ${jrEdits(x.editLogs, x.timeline)}
+      </div>
     </div>
   </div>`;
 }
@@ -648,12 +772,13 @@ function prepSearchRow(x){
   x._hay=parts.map(v=>(v||'').toString().toLowerCase()).join(' | ');
   x._loose=looseTH(parts.join(' '));            // ไม่สนเว้นวรรค/วรรณยุกต์
   x._nm=nameKey(x.owner);                       // ชื่อผู้เสนอ ไม่สนคำนำหน้า
+  x._dk=deptKey(x.department);                  // ฝ่ายงาน ไม่สนส่วนที่มองไม่เห็น
   x._dig=dig; x._dates=dates;
   return x;
 }
 function loadSearchData(){
-  SEARCH_PROMISE = apiCached('publicHistory',{period:'all', limit:'all'}, 60000)
-    .then(d=>{ if(d && d.ok){ SEARCH_ROWS=(d.rows||[]).map(prepSearchRow); fillTrackDept(); } return SEARCH_ROWS; })
+  SEARCH_PROMISE = apiCached('getHistory',{period:'all', limit:'all'}, 60000)
+    .then(d=>{ if(d && d.ok){ SEARCH_ROWS=(d.rows||[]).map(prepSearchRow); } return SEARCH_ROWS; })
     .catch(err=>{ SEARCH_PROMISE=null; throw err; });
   return SEARCH_PROMISE;
 }
@@ -670,7 +795,7 @@ function filterSearch(s){
   const ql=looseTH(s.raw), qn=nameKey(s.raw);
   const out=[];
   for(const x of (SEARCH_ROWS||[])){
-    if(s.dept && (x.department||'')!==s.dept) continue;
+    if(s.dept && x._dk!==deptKey(s.dept)) continue;
     if(s.date && x._dates.indexOf(s.date)<0) continue;
     if(q && !(x._hay.indexOf(q)>=0 || (ql && x._loose.indexOf(ql)>=0) || (qn && x._nm.indexOf(qn)>=0)
               || (qd && x._dig.some(d=>d.indexOf(qd)>=0)) || (alt && pad4(x.folderCode)===alt))) continue;
@@ -711,7 +836,7 @@ async function doTrack(){
     const n=parseInt(kw,10);
     if(n>=1 && n<=TOTAL_FOLDERS){
       try{
-        const d=await api('publicFolder',{folderCode:pad4(kw)});
+        const d=await api('getFolder',{folderCode:pad4(kw)});
         if(d.ok && d.folder && (d.folder.status||'ว่าง')!=='ว่าง'){ document.getElementById('trackList').innerHTML=''; if(typeof showHistCard==='function') showHistCard(false); return renderTrack(d.folder); }
       }catch(e){}
     }
