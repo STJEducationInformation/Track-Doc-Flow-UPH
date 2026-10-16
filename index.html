@@ -717,7 +717,7 @@ function histEntryHTML(x){
   const viewBtn = x.live ? `<button class="btn btn-sm btn-brand py-0 px-2" onclick="event.stopPropagation();openFolder('${esc(x.folderCode)}')" title="ดูรายละเอียด"><i class="bi bi-eye"></i></button>` : '';
   const auNo = first.docNumber || '—';
   const moreTag = recs.length>1 ? ` <span class="text-muted fw-normal">(+${recs.length-1})</span>` : '';
-  const docDate = thaiDate(first.docDate) || '—';
+  const docDate = thaiDate(proposeDate(x)) || '—';
   const subject = first.subject || '';
   const docType = safeType(first.docType);
   return `<div class="hist-item border-bottom">
@@ -763,18 +763,29 @@ function nameKey(s){                              // เหมือนข้า
    แล้วกรองในเครื่องทุกครั้งที่พิมพ์ — ไม่ต้องรอ server ระหว่างพิมพ์ */
 let SEARCH_ROWS=null, SEARCH_PROMISE=null, LIVE_TIMER=null;
 const SEARCH_LIMIT=100;
+/* วันที่ให้อยู่ในรูปแบบเดียว YYYY-MM-DD ตามเวลาในเครื่อง (รับได้ทั้ง "2026-10-14" และ "2026-10-13T17:00:00Z") */
+function ymdLocal(v){
+  if(!v) return ''; const t=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const d=new Date(t); if(isNaN(d)) return '';
+  const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+/* วันที่เสนอแฟ้ม = วันที่ในเอกสาร ถ้าไม่ได้กรอก ใช้วันที่ลงทะเบียน */
+function proposeDate(x){ const r=(x.records||[])[0]||{}; return ymdLocal(r.docDate) || ymdLocal(x.createdAt); }
 function prepSearchRow(x){
   const parts=[pad4(x.folderCode), x.owner, x.department, x.timeline, x.status];
   const dig=[], dates=[];
   (x.records||[]).forEach(r=>{
     parts.push(r.docNumber,(r.docNumber||'').split('/')[1]||'',r.subject,r.docType,r.urgency,r.docDate,thaiDate(r.docDate));
-    dig.push((r.docNumber||'').replace(/[^0-9]/g,'')); dates.push(r.docDate||'');
+    dig.push((r.docNumber||'').replace(/[^0-9]/g,'')); dates.push(ymdLocal(r.docDate) || ymdLocal(x.createdAt));
   });
   x._hay=parts.map(v=>(v||'').toString().toLowerCase()).join(' | ');
   x._loose=looseTH(parts.join(' '));            // ไม่สนเว้นวรรค/วรรณยุกต์
   x._nm=nameKey(x.owner);                       // ชื่อผู้เสนอ ไม่สนคำนำหน้า
   x._dk=deptKey(x.department);                  // ฝ่ายงาน ไม่สนส่วนที่มองไม่เห็น
-  x._dig=dig; x._dates=dates;
+  if(!(x.records||[]).length) dates.push(ymdLocal(x.createdAt));
+  // วันที่เสนอแฟ้ม (ตรงกับที่แสดงในตาราง): วันที่ในเอกสาร ถ้าไม่ได้กรอก ใช้วันที่ลงทะเบียน
+  x._dig=dig; x._dates=dates.filter(Boolean);
   return x;
 }
 function loadSearchData(){
